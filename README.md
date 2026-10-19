@@ -19,7 +19,7 @@ Your normal spell button still casts your equipped spell, as before.
   - Your Y spell has a gold frame, and Mirror Walk shows a blue frame while its mirror is out.
   - Holding RB enlarges the tiles and shows their mana costs.
   - Labels follow the device you last used (Y X B A or 1 2 3 4).
-- **Settings in the pause menu** (MODS tab, with the Belmont Minimap mod installed), or in the config file.
+- **Settings panel in the Tarot menu:** press **F3** (gamepad **R3**). Changes apply at once, with the wheel previewing them in the corner.
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
 ### Pin Y spell (on by default)
@@ -33,13 +33,19 @@ Some cards have Blessings or Works of Mercy tasks that only count while the card
 
 ## Settings
 
-Pause menu → **MODS** → **Ability Wheel**, or `BepInEx/config/leandrobueno.abilitywheel.cfg`. Changes made in the menu apply at once; edits to the file apply the next time the game starts.
+In the Tarot menu, press **F3** (gamepad **R3**) to open the settings panel:
+- Up/Down picks a setting and Left/Right changes it.
+- A/Enter toggles a setting or restores the defaults.
+- B/Esc closes the panel.
+
+You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the file apply the next time the game starts. If you use Belmont Minimap, the same settings are also under Pause menu → **MODS** → **Ability Wheel**.
 
 | Setting | Default | |
 |---|---|---|
 | Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Light Parry, so it's a poor choice. |
 | Keyboard key for slot Y / X / B / A | 1 / 2 / 3 / 4 | Number keys, Q, F, G, T, V, Z, B or the mouse side buttons |
 | Add to wheel key (keyboard) | F | The gamepad always uses L3 |
+| Settings key (keyboard) | F3 | F1–F12. The gamepad always uses R3. F4 is Map Secrets' menu key. |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
 | Wheel opacity | 100% | 20–100% |
@@ -57,7 +63,6 @@ The config file has a few more:
 
 - Castlevania: Belmont's Curse, Steam version on Windows x64. Tested on game version 1.1.3 (BuildID 25975867).
 - [BepInEx 6 Unity IL2CPP x64, bleeding edge #788](https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip), or the game's [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) package (same build).
-- Optional: **Belmont Minimap** 1.1.0 or newer for the in-game settings page (it provides the MODS tab). Without it, everything works and the settings are in the config file.
 
 ## Install
 
@@ -73,7 +78,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Compatibility and known limitations
 
-- Works alongside other BepInEx mods, including HDR mods such as RenoDX.
+- Works alongside other BepInEx mods, including HDR mods such as RenoDX. With Belmont Minimap 1.1.0 or newer, the settings also show in its MODS tab.
 - A tap of the wheel button does its normal action (RB: Interact) when you release it, not when you press it.
 - The game itself removes Mirror Walk's mirror and Wheel of Chaos' wheels when another spell is equipped, so casting another spell ends them.
 - Like the game's own spell button, a cast pressed in the middle of an attack combo may need a second press.
@@ -99,4 +104,5 @@ MIT, see [LICENSE](LICENSE).
 
 - [BepInEx](https://github.com/BepInEx/BepInEx), with Il2CppInterop and HarmonyX.
 - [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) by KZekai.
+- Map Secrets, whose in-menu popup inspired the settings panel.
 - Belmont Minimap, for the shared MODS tab that other mods can add their settings to.

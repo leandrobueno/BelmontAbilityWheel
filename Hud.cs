@@ -22,7 +22,6 @@ internal sealed class Hud
     private static readonly Color GoldColor = new(0.78f, 0.6f, 0.3f, 1f);      // the Y card
     private static readonly Color ActiveColor = new(0.4f, 0.65f, 0.95f, 1f);   // a StayEquipped card that is out
     private static readonly Color GrayedIcon = new(0.25f, 0.25f, 0.25f, 1f);
-    private static readonly Color HintColor = new(0.93f, 0.87f, 0.74f, 1f);
     private static readonly Color[] LetterColors =   // Y, X, B, A as on an Xbox pad
     {
         new(1f, 0.8f, 0.2f), new(0.35f, 0.6f, 1f), new(1f, 0.35f, 0.35f), new(0.45f, 0.85f, 0.35f),
@@ -56,18 +55,9 @@ internal sealed class Hud
 
     internal Hud()
     {
-        _canvas = new GameObject("AbilityWheelHud");
-        UnityEngine.Object.DontDestroyOnLoad(_canvas);
-        var canvas = _canvas.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 20000;   // above the game's menus, for the Spells menu
-        var scaler = _canvas.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 1f;
+        _canvas = Ui.NewCanvas("AbilityWheelHud", 20000);   // above the game's menus, for the Tarot menu
 
-        _panel = NewRect("Panel", _canvas.transform, Vector2.zero, Vector2.zero);
+        _panel = Ui.NewRect("Panel", _canvas.transform, Vector2.zero, Vector2.zero);
         _panel.anchorMin = _panel.anchorMax = _panel.pivot = new Vector2(1f, 0f);
         _group = _panel.gameObject.AddComponent<CanvasGroup>();
         _group.blocksRaycasts = false;
@@ -79,12 +69,12 @@ internal sealed class Hud
         _panel.sizeDelta = new Vector2(2f * half, 2f * half);
         Vector2[] centers = { new(0f, d), new(-d, 0f), new(d, 0f), new(0f, -d) };
 
-        var font = FindFont();
+        var font = Ui.FindFont();
         for (int slot = 0; slot < _slots.Length; slot++)
             _slots[slot] = NewSlot(slot, centers[slot], font);
 
         // In the Spells menu's bottom bar, left of the game's own "Back" prompt.
-        _hint = NewText("Hint", _panel, new Vector2(-330f, -half - 24f), new Vector2(560f, 34f), font, 26f, HintColor);
+        _hint = Ui.NewText("Hint", _panel, new Vector2(-430f, -half - 24f), new Vector2(760f, 34f), font, 26f, Ui.TextColor);
         _hint.alignment = TextAlignmentOptions.Right;
         _hint.gameObject.SetActive(false);
 
@@ -110,7 +100,7 @@ internal sealed class Hud
         for (int slot = 0; slot < _slots.Length; slot++)
         {
             _slots[slot].Letter.text = keys == null ? Wheel.SlotLabels[slot] : keys[slot];
-            _slots[slot].Letter.color = keys == null ? LetterColors[slot] : HintColor;
+            _slots[slot].Letter.color = keys == null ? LetterColors[slot] : Ui.TextColor;
         }
     }
 
@@ -214,86 +204,37 @@ internal sealed class Hud
 
     private Slot NewSlot(int index, Vector2 center, TMP_FontAsset font)
     {
-        var root = NewRect(Wheel.SlotLabels[index], _panel, center, new Vector2(Tile, Tile));
+        var root = Ui.NewRect(Wheel.SlotLabels[index], _panel, center, new Vector2(Tile, Tile));
         var slot = new Slot();
 
         // The frame is 4 bars outside the tile, never under it: with HudOpacity below 1 a frame
         // under the see-through tile shows through (badly with HDR mods like RenoDX). The top
         // and bottom bars also cover the corners.
-        var diamond = NewRect("Diamond", root, Vector2.zero, new Vector2(Tile, Tile));
+        var diamond = Ui.NewRect("Diamond", root, Vector2.zero, new Vector2(Tile, Tile));
         diamond.localRotation = Quaternion.Euler(0f, 0f, 45f);
-        NewImage("Tile", diamond, Vector2.zero, new Vector2(Tile, Tile), TileColor);
+        Ui.NewImage("Tile", diamond, Vector2.zero, new Vector2(Tile, Tile), TileColor);
         float edge = (Tile + Border) / 2f;
         slot.Frame = new[]
         {
-            NewImage("FrameTop", diamond, new Vector2(0f, edge), new Vector2(Tile + 2f * Border, Border), FrameColor),
-            NewImage("FrameBottom", diamond, new Vector2(0f, -edge), new Vector2(Tile + 2f * Border, Border), FrameColor),
-            NewImage("FrameLeft", diamond, new Vector2(-edge, 0f), new Vector2(Border, Tile), FrameColor),
-            NewImage("FrameRight", diamond, new Vector2(edge, 0f), new Vector2(Border, Tile), FrameColor),
+            Ui.NewImage("FrameTop", diamond, new Vector2(0f, edge), new Vector2(Tile + 2f * Border, Border), FrameColor),
+            Ui.NewImage("FrameBottom", diamond, new Vector2(0f, -edge), new Vector2(Tile + 2f * Border, Border), FrameColor),
+            Ui.NewImage("FrameLeft", diamond, new Vector2(-edge, 0f), new Vector2(Border, Tile), FrameColor),
+            Ui.NewImage("FrameRight", diamond, new Vector2(edge, 0f), new Vector2(Border, Tile), FrameColor),
         };
 
-        slot.Icon = NewImage("Icon", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), Color.white);
+        slot.Icon = Ui.NewImage("Icon", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), Color.white);
         slot.Icon.preserveAspect = true;
         slot.Icon.enabled = false;
 
-        slot.Name = NewText("Name", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), font, 15f, Color.white);
+        slot.Name = Ui.NewText("Name", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), font, 15f, Color.white);
         slot.Name.enableWordWrapping = true;
 
         float tip = Tile / Mathf.Sqrt(2f) - 12f;
-        slot.Letter = NewText("Letter", root, new Vector2(0f, -tip), new Vector2(40f, 30f), font, 24f, LetterColors[index]);
+        slot.Letter = Ui.NewText("Letter", root, new Vector2(0f, -tip), new Vector2(40f, 30f), font, 24f, LetterColors[index]);
         slot.Letter.text = Wheel.SlotLabels[index];
         slot.Letter.fontStyle = FontStyles.Bold;
-        slot.Cost = NewText("Cost", root, new Vector2(0f, tip), new Vector2(60f, 26f), font, 20f, Color.white);
+        slot.Cost = Ui.NewText("Cost", root, new Vector2(0f, tip), new Vector2(60f, 26f), font, 20f, Color.white);
         slot.Cost.gameObject.SetActive(false);
         return slot;
-    }
-
-    private static RectTransform NewRect(string name, Transform parent, Vector2 position, Vector2 size)
-    {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        var rect = go.AddComponent<RectTransform>();
-        rect.anchoredPosition = position;
-        rect.sizeDelta = size;
-        return rect;
-    }
-
-    private static Image NewImage(string name, Transform parent, Vector2 position, Vector2 size, Color color)
-    {
-        var image = NewRect(name, parent, position, size).gameObject.AddComponent<Image>();
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static TextMeshProUGUI NewText(string name, Transform parent, Vector2 position, Vector2 size,
-        TMP_FontAsset font, float fontSize, Color color)
-    {
-        var text = NewRect(name, parent, position, size).gameObject.AddComponent<TextMeshProUGUI>();
-        if (font != null)
-            text.font = font;
-        text.fontSize = fontSize;
-        text.color = color;
-        text.alignment = TextAlignmentOptions.Center;
-        text.enableWordWrapping = false;
-        text.raycastTarget = false;
-        // No outline: it erodes the thin strokes of the game's BaseFont.
-        return text;
-    }
-
-    // BaseFont is the game's main UI font.
-    private static TMP_FontAsset FindFont()
-    {
-        TMP_FontAsset any = null;
-        foreach (var obj in Resources.FindObjectsOfTypeAll(Il2CppType.Of<TMP_FontAsset>()))
-        {
-            var font = obj?.TryCast<TMP_FontAsset>();
-            if (font == null)
-                continue;
-            if (font.name == "BaseFont")
-                return font;
-            any ??= font;
-        }
-        return any;
     }
 }

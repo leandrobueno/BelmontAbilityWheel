@@ -19,6 +19,10 @@ internal static class Keys
     // Keys the Arcanas menu doesn't use (it uses Q/E, 1/3, Enter, Space, Backspace, Delete, R, Alt).
     internal static readonly string[] AssignKeyChoices = { "F", "G", "T", "V", "Z", "B", "N", "M" };
 
+    // The game uses no F-keys; F4 is Map Secrets' menu key, F6-F11 belong to other common mods.
+    internal static readonly string[] SettingsKeyChoices =
+        { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12" };
+
     internal static bool KeyboardMode { get; private set; }
 
     internal static ButtonControl Control(string name)

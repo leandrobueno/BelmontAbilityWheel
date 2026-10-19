@@ -23,6 +23,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string>[] Slots;      // Wheel.SlotLabels order
     internal static ConfigEntry<string>[] SlotKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<string> AssignKey;
+    internal static ConfigEntry<string> SettingsKey;
     internal static ConfigEntry<bool> AutoFillSlots;
     internal static ConfigEntry<bool> KeepHomeCard;
     internal static ConfigEntry<string> StayEquipped;
@@ -69,6 +70,10 @@ public class Plugin : BasePlugin
                 "In the Arcanas menu: puts the highlighted card on the wheel (then press a slot key). " +
                 "The gamepad uses L3.",
                 new AcceptableValueList<string>(Keys.AssignKeyChoices)));
+        SettingsKey = Config.Bind("Keyboard", "SettingsKey", "F3",
+            new ConfigDescription(
+                "In the Tarot menu: opens the Ability Wheel settings. The gamepad uses R3.",
+                new AcceptableValueList<string>(Keys.SettingsKeyChoices)));
 
         AutoFillSlots = Config.Bind("Cards", "AutoFillSlots", true,
             "Fill empty slots with owned cards that aren't on the wheel yet.");

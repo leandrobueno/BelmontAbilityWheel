@@ -101,7 +101,8 @@ public partial class Wheel : MonoBehaviour
             }
 
             TrackHome();
-            UpdateAssign();
+            if (!UpdateSettings())
+                UpdateAssign();
             TrackModifier();
             if (_pendingSlot < 0)
                 PollSlotKeys();
@@ -303,6 +304,8 @@ public partial class Wheel : MonoBehaviour
         _loanSticky = false;
         _heldBackActions.Clear();
         _swallowed.Clear();
+        CloseSettings(waitRelease: false);
+        _settingsWaitRelease = false;
         CancelAssign();
         HideHud();
     }
@@ -759,7 +762,7 @@ public partial class Wheel : MonoBehaviour
             var gold = Plugin.KeepHomeCard.Value && _home != null ? _home : Inventory?.GetEquippedSpell();
             for (int slot = 0; slot < _slotSpells.Length; slot++)
                 _slotCosts[slot] = _slotSpells[slot] == null ? 0 : Cost(_slotSpells[slot]);
-            _hud.SetHint(inMenu ? MenuHint() : "");
+            _hud.SetHint(inMenu && !_settingsOpen ? MenuHint() : "");
             _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(Plugin.SlotKeys, k => Keys.Label(k.Value)) : null);
             bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
             _hud.Refresh(_slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held);

@@ -44,6 +44,8 @@ public partial class Wheel
     [HideFromIl2Cpp]
     private void UpdateAssign()
     {
+        if (_settingsOpen || _settingsWaitRelease)
+            return;
         var pad = Gamepad.current;
         if (_waitFaceRelease)
         {
@@ -91,7 +93,7 @@ public partial class Wheel
             Plugin.Logger.LogInfo("[assign] no card highlighted");
             return;
         }
-        BlockUi();
+        BlockUi(BlockedWhileAssigning);
         _assigning = true;
         _assignCard = card;
         Plugin.Logger.LogInfo($"[assign] {card.itemID}: waiting for Y/X/B/A");
@@ -140,7 +142,7 @@ public partial class Wheel
 
     // Only actions that are on, so unblocking restores exactly what was there.
     [HideFromIl2Cpp]
-    private void BlockUi()
+    private void BlockUi((string Map, string Action)[] blocked)
     {
         _blockedUiActions.Clear();
         var asset = _input?.data?.moveInput?.asset;
@@ -149,7 +151,7 @@ public partial class Wheel
             Plugin.Logger.LogWarning("[assign] menu controls not found, menu buttons stay active");
             return;
         }
-        foreach (var (mapName, actionName) in BlockedWhileAssigning)
+        foreach (var (mapName, actionName) in blocked)
         {
             var action = asset.FindActionMap(mapName, false)?.FindAction(actionName, false);
             if (action != null && action.enabled)
@@ -193,7 +195,9 @@ public partial class Wheel
                 : "Y X B A";
             return $"Choose a slot  {slots}      Cancel  {(keyboard ? "Esc" : "L3")}";
         }
-        return HighlightedCard == null ? "" : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
+        string settings = $"Settings  {(keyboard ? Keys.Label(Plugin.SettingsKey.Value) : "R3")}";
+        return HighlightedCard == null ? settings
+            : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}      {settings}";
     }
 
     [HideFromIl2Cpp]
