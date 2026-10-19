@@ -6,10 +6,11 @@ using HarmonyLib;
 
 namespace AbilityWheel;
 
-[BepInPlugin(Guid, "Ability Wheel", "0.5.2")]
+[BepInPlugin(Guid, "Ability Wheel", Version)]
 public class Plugin : BasePlugin
 {
-    public const string Guid = "yourname.abilitywheel";   // any unique ID
+    public const string Guid = "leandrobueno.abilitywheel";
+    public const string Version = "1.0.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -84,9 +85,6 @@ public class Plugin : BasePlugin
             "mirror) has played, you press Y, cast another card from the wheel, or the game saves. " +
             "Card IDs, separated by commas. (Wheel of Chaos doesn't need this: its wheels keep an action " +
             "running on Rose, which already keeps the card on.)");
-        // The 0.3.2-0.5.1 default also had Wheel of Chaos, which kept it on after its wheels were gone.
-        if (StayEquipped.Value.Replace(" ", "") == "PocketMirror,TargetingChargingWheels")
-            StayEquipped.Value = "PocketMirror";
 
         HudVisibility = Config.Bind("Display", "HudVisibility", "Always",
             new ConfigDescription(
