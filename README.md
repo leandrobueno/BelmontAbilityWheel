@@ -83,6 +83,14 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 `BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[assign]`, `[hud]` and `[cards]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
 
+## Building from source
+
+Needs the .NET SDK and the game with BepInEx installed and started once (BepInEx generates the interop assemblies the project references). `dotnet build -c Release` builds the mod and copies `AbilityWheel.dll` into the game's `BepInEx/plugins/AbilityWheel`, so close the game first. If the game isn't in the default Steam folder, add `-p:GameDir="<game folder>"`.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 ## Changelog
 
 - **1.0.0**: first release.
