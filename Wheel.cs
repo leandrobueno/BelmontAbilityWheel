@@ -65,6 +65,8 @@ public partial class Wheel : MonoBehaviour
 
     private SpellItemData _home;
     private SpellItemData _onLoan;
+    private string _lostHomeId;
+    private string _lostLoanId;
     private bool _loanSticky;
     private readonly List<string> _loanPrefixes = new();
     private float _loanedAt;
@@ -241,6 +243,7 @@ public partial class Wheel : MonoBehaviour
         }
         FindSpellStateIndex();
         _home = inventoryComponent.inventory.GetEquippedSpell();
+        RestoreLostHome(inventoryComponent.inventory);
         _warnedIncomplete = false;
         Plugin.Logger.LogInfo(
             $"[wheel] ready on '{entity.gameObject.name}', casting through {trigger.name}, " +
@@ -249,9 +252,41 @@ public partial class Wheel : MonoBehaviour
         return true;
     }
 
+    // Rose was lost while a wheel card was on loan, so the card she comes back with isn't the
+    // home card.
+    [HideFromIl2Cpp]
+    private void RestoreLostHome(Inventory inventory)
+    {
+        if (_lostHomeId != null && _home?.itemID == _lostLoanId)
+        {
+            var home = Cards.Owned(inventory).FirstOrDefault(s => s.itemID == _lostHomeId);
+            if (home != null)
+            {
+                inventory.EquipSpellFromInventory(home);
+                _home = home;
+                Plugin.Logger.LogInfo($"[home] {_lostLoanId} -> {_lostHomeId}: on loan when Rose was reloaded");
+            }
+        }
+        _lostHomeId = _lostLoanId = null;
+    }
+
     [HideFromIl2Cpp]
     private void Forget()
     {
+        // The held Spell state lives in the game, so it must not outlive the hold.
+        try
+        {
+            DropHold();
+        }
+        catch
+        {
+            _holdControl = null;
+        }
+        if (_onLoan != null && _home != null)
+        {
+            _lostHomeId = _home.itemID;
+            _lostLoanId = _onLoan.itemID;
+        }
         _entity = null;
         _actor = null;
         _input = null;
@@ -391,6 +426,7 @@ public partial class Wheel : MonoBehaviour
         {
             Plugin.Logger.LogInfo($"[cast] {SlotLabels[_castSlot]} {_castSpell.itemID} dropped: {reason}");
             _castSpell = null;
+            DropHold();
         }
 
         var inventory = Inventory;
@@ -558,6 +594,7 @@ public partial class Wheel : MonoBehaviour
         {
             Plugin.Logger.LogInfo($"[cast] {what} dropped: the equipped card changed");
             _castSpell = null;
+            DropHold();
             return;
         }
 
@@ -652,7 +689,7 @@ public partial class Wheel : MonoBehaviour
             if (down != _spellWasDown)
             {
                 _spellWasDown = down;
-                Plugin.Logger.LogInfo($"[trace] t={now:0.00} Y {(down ? "down" : "up")}");
+                Plugin.Logger.LogInfo($"[trace] t={now:0.00} Spell {(down ? "down" : "up")}");
                 _traceUntil = now + TraceSeconds;
             }
         }

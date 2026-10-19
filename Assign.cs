@@ -62,22 +62,15 @@ public partial class Wheel
             return;
         }
 
-        if ((pad != null && pad.leftStickButton.wasPressedThisFrame) || Keys.Pressed(Plugin.AssignKey.Value))
+        bool assignPressed = (pad != null && pad.leftStickButton.wasPressedThisFrame) || Keys.Pressed(Plugin.AssignKey.Value);
+        if (!_assigning)
         {
-            if (_assigning)
-                EndAssign("cancelled");
-            else
+            if (assignPressed)
                 StartAssign(HighlightedCard);
             return;
         }
 
-        if (!_assigning)
-            return;
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            EndAssign("cancelled");
-            return;
-        }
+        // Slot keys first: the assign key may also be a slot key.
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
             if ((pad != null && FaceButton(pad, slot).wasPressedThisFrame) || Keys.Pressed(Plugin.SlotKeys[slot].Value))
@@ -86,6 +79,8 @@ public partial class Wheel
                 return;
             }
         }
+        if (assignPressed || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame))
+            EndAssign("cancelled");
     }
 
     [HideFromIl2Cpp]
