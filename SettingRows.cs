@@ -78,6 +78,11 @@ internal static class SettingRows
                 new[] { "Always", "While holding the wheel button", "Never" },
                 new[] { "始终", "按住轮盘键时", "从不" }),
 
+            Toggle(Plugin.FollowGameHud, "随游戏 HUD 隐藏", "Fade with game HUD",
+                "游戏 HUD 被隐藏时(例如使用 HUD Auto Hide),轮盘一同淡出。按住轮盘键或在塔罗菜单中时始终显示。",
+                "Fade the cards out while the game's HUD is hidden, for example by HUD Auto Hide. " +
+                "Holding the wheel button or the Tarot menu always shows them."),
+
             Slider(Plugin.HudOpacity, "轮盘不透明度", "Wheel opacity",
                 "轮盘卡牌的不透明程度。", "How solid the wheel's tiles are.", 0.2f, 1f, 0.05f, "{0:0%}"),
             Slider(Plugin.HudScale, "轮盘大小", "Wheel size",

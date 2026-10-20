@@ -11,7 +11,7 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.1.0";
+    public const string Version = "1.2.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -28,6 +28,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<bool> KeepHomeCard;
     internal static ConfigEntry<string> StayEquipped;
     internal static ConfigEntry<string> HudVisibility;
+    internal static ConfigEntry<bool> FollowGameHud;
     internal static ConfigEntry<float> HudOpacity;
     internal static ConfigEntry<float> HudScale;
     internal static ConfigEntry<float> HudOffsetX;
@@ -92,6 +93,9 @@ public class Plugin : BasePlugin
                 "When to show the 4 cards in the bottom-right corner during gameplay: Always, " +
                 "WhileHeld (only while the modifier is held) or Never.",
                 new AcceptableValueList<string>("Always", "WhileHeld", "Never")));
+        FollowGameHud = Config.Bind("Display", "FollowGameHud", true,
+            "Fade the 4 cards out while the game's own HUD (health and mana, top left) is hidden, for example " +
+            "by the HUD Auto Hide mod. Holding the modifier, assigning a card and the Tarot menu always show them.");
         HudOpacity = Config.Bind("Display", "HudOpacity", 1f,
             new ConfigDescription("Opacity of the card tiles (1 = solid).", new AcceptableValueRange<float>(0.2f, 1f)));
         HudScale = Config.Bind("Display", "HudScale", 1f,

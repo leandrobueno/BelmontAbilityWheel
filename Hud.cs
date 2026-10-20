@@ -17,6 +17,8 @@ internal sealed class Hud
 
     private const float Border = 3f;
 
+    private const float FadeOutSeconds = 0.3f;   // from solid to hidden, when the game HUD fades
+
     private static readonly Color TileColor = new(0.07f, 0.05f, 0.09f, 1f);
     private static readonly Color FrameColor = new(0.02f, 0.01f, 0.03f, 1f);
     private static readonly Color GoldColor = new(0.78f, 0.6f, 0.3f, 1f);      // the Y card
@@ -47,7 +49,9 @@ internal sealed class Hud
     private readonly Dictionary<string, Sprite> _icons = new();
     private readonly HashSet<string> _iconFailed = new();
     private bool _visible = true;
-    private (float, float, float, float) _layout = (-1f, 0f, 0f, 0f);
+    private (float, float, float) _layout = (-1f, 0f, 0f);
+    private float _fade = 1f;
+    private float _alpha = -1f;
     private string _letters = "";
 
     // False once Unity has destroyed the canvas, so Wheel builds a new one.
@@ -112,17 +116,28 @@ internal sealed class Hud
         _canvas.SetActive(visible);
     }
 
-    internal void Refresh(SpellItemData[] cards, int[] costs, float mana, SpellItemData gold, SpellItemData active, bool held)
+    // fade: how visible the game's HUD is (1 = fully). The tiles follow it down over at least
+    // FadeOutSeconds, so letting go of the modifier doesn't make them vanish at once, and come
+    // back at once.
+    internal void Refresh(SpellItemData[] cards, int[] costs, float mana, SpellItemData gold, SpellItemData active, bool held,
+        float fade)
     {
         // Set only on changes: touching the layout every frame makes Unity rebuild the UI.
-        var layout = (Plugin.HudScale.Value * (held ? 1.08f : 1f), Plugin.HudOffsetX.Value, Plugin.HudOffsetY.Value,
-            Plugin.HudOpacity.Value);
+        var layout = (Plugin.HudScale.Value * (held ? 1.08f : 1f), Plugin.HudOffsetX.Value, Plugin.HudOffsetY.Value);
         if (layout != _layout)
         {
             _layout = layout;
             _panel.localScale = new Vector3(layout.Item1, layout.Item1, 1f);
             _panel.anchoredPosition = new Vector2(-layout.Item2, layout.Item3);
-            _group.alpha = layout.Item4;
+        }
+
+        fade = Mathf.Clamp01(fade);
+        _fade = fade >= _fade ? fade : Mathf.Max(fade, _fade - Time.unscaledDeltaTime / FadeOutSeconds);
+        float alpha = Plugin.HudOpacity.Value * _fade;
+        if (alpha != _alpha)
+        {
+            _alpha = alpha;
+            _group.alpha = alpha;
         }
 
         for (int i = 0; i < _slots.Length; i++)

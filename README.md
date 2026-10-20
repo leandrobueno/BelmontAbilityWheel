@@ -19,6 +19,7 @@ Your normal spell button still casts your equipped spell, as before.
   - Your Y spell has a gold frame, and Mirror Walk shows a blue frame while its mirror is out.
   - Holding RB enlarges the tiles and shows their mana costs.
   - Labels follow the device you last used (Y X B A or 1 2 3 4).
+  - Fades out together with the game's own HUD, for example when the HUD Auto Hide mod hides it. Holding RB always shows it.
 - **Settings in the pause menu:** the **MODS SETTINGS** tab, after SYSTEM (title screen: Settings → Mods Settings), with the Belmont UI plugin (see Requirements).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
@@ -44,6 +45,7 @@ You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the f
 | Add to wheel key (keyboard) | F | The gamepad always uses L3 |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
+| Fade with game HUD | On | Fades the cards out while the game's HUD (health and mana) is hidden, for example by HUD Auto Hide. Holding the wheel button or the Tarot menu always shows them. |
 | Wheel opacity | 100% | 20–100% |
 | Wheel size | 1.00x | 0.5–2x |
 | Distance from right / bottom edge | 48 / 48 | Pixels at 1080p |
@@ -76,6 +78,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 ## Compatibility and known limitations
 
 - Works alongside other BepInEx mods, including HDR mods such as RenoDX. With Belmont Minimap 1.1.0 or newer, the settings also show in its MODS tab.
+- With HUD Auto Hide, the wheel fades in and out with the game's HUD (*Fade with game HUD*). No setup is needed in either mod.
 - A tap of the wheel button does its normal action (RB: Interact) when you release it, not when you press it.
 - The game itself removes Mirror Walk's mirror and Wheel of Chaos' wheels when another spell is equipped, so casting another spell ends them.
 - Like the game's own spell button, a cast pressed in the middle of an attack combo may need a second press.
@@ -95,6 +98,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.2.0**: *Fade with game HUD* (on by default): the wheel fades out while the game's HUD is hidden, for example by HUD Auto Hide, and holding the wheel button always shows it.
 - **1.1.0**: settings moved from a popup in the Tarot menu (F3 / R3) to the pause menu's Mods Settings tab, which the Belmont UI plugin adds (optional dependency). The SettingsKey entry is gone.
 - **1.0.0**: first release.
 

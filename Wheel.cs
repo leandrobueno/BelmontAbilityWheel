@@ -762,7 +762,9 @@ public partial class Wheel : MonoBehaviour
             _hud.SetHint(inMenu ? MenuHint() : "");
             _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(Plugin.SlotKeys, k => Keys.Label(k.Value)) : null);
             bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
-            _hud.Refresh(_slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held);
+            // Using the wheel always shows it, like the Tarot menu does.
+            float fade = Plugin.FollowGameHud.Value && !inMenu && !held ? GameHud.Alpha() : 1f;
+            _hud.Refresh(_slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held, fade);
         }
         catch (Exception e)
         {

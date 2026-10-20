@@ -3,7 +3,7 @@
 		<TargetFramework>net6.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<CheckEolTargetFramework>false</CheckEolTargetFramework>
-		<Version>1.1.0</Version>
+		<Version>1.2.0</Version>
 		<Authors>leandrobueno</Authors>
 		<GameDir>C:\Program Files (x86)\Steam\steamapps\common\Castlevania Belmont's Curse</GameDir>
 	</PropertyGroup>
@@ -31,7 +31,8 @@
 		<!-- Optional at run time (soft dependency): the settings panel and the Minimap MODS page. Build BelmontUI first. -->
 		<Reference Include="$(GameDir)\BepInEx\plugins\BelmontUI\BelmontUI.dll" Private="false" />
 	</ItemGroup>
-	<Target Name="CopyToPlugins" AfterTargets="Build">
+	<!-- dotnet build -p:CopyToGame=false builds without touching the game (it locks the dll while running). -->
+	<Target Name="CopyToPlugins" AfterTargets="Build" Condition="'$(CopyToGame)' != 'false'">
 		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\AbilityWheel" />
 	</Target>
 
