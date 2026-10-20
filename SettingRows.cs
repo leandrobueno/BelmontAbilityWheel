@@ -103,11 +103,6 @@ internal static class SettingRows
             "In the Tarot menu, highlight a card, press this key, then a slot key to put it on the wheel. Gamepad: L3.",
             Keys.AssignKeyChoices, Keys.AssignKeyChoices));
 
-        rows.Add(Choice(Plugin.SettingsKey, "设置按键(键盘)", "Settings key (keyboard)",
-            "在塔罗菜单中按此键打开本设置。手柄使用 R3。",
-            "In the Tarot menu, opens these settings. Gamepad: R3.",
-            Keys.SettingsKeyChoices, Keys.SettingsKeyChoices));
-
         return rows;
     }
 

@@ -19,7 +19,7 @@ Your normal spell button still casts your equipped spell, as before.
   - Your Y spell has a gold frame, and Mirror Walk shows a blue frame while its mirror is out.
   - Holding RB enlarges the tiles and shows their mana costs.
   - Labels follow the device you last used (Y X B A or 1 2 3 4).
-- **Settings panel in the Tarot menu:** press **F3** (gamepad **R3**). Changes apply at once, with the wheel previewing them in the corner.
+- **Settings in the pause menu:** the **MODS SETTINGS** tab, after SYSTEM (title screen: Settings → Mods Settings), with the Belmont UI plugin (see Requirements).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
 ### Pin Y spell (on by default)
@@ -33,10 +33,7 @@ Some cards have Blessings or Works of Mercy tasks that only count while the card
 
 ## Settings
 
-In the Tarot menu, press **F3** (gamepad **R3**) to open the settings panel:
-- Up/Down picks a setting and Left/Right changes it.
-- A/Enter toggles a setting or restores the defaults.
-- B/Esc closes the panel.
+With the Belmont UI plugin installed, the settings are in the pause menu: the **MODS SETTINGS** tab after SYSTEM, then **Settings** on the **Ability Wheel** row (on the title screen: **Settings** → **Mods Settings**). They look and work like the game's other settings and apply at once; **Restore defaults** at the end of the section (a Reset button) puts them all back. Without that plugin the wheel works the same, and the config file is the only place to change settings.
 
 You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the file apply the next time the game starts. If you use Belmont Minimap, the same settings are also under Pause menu → **MODS** → **Ability Wheel**.
 
@@ -45,7 +42,6 @@ You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the f
 | Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Light Parry, so it's a poor choice. |
 | Keyboard key for slot Y / X / B / A | 1 / 2 / 3 / 4 | Number keys, Q, F, G, T, V, Z, B or the mouse side buttons |
 | Add to wheel key (keyboard) | F | The gamepad always uses L3 |
-| Settings key (keyboard) | F3 | F1–F12. The gamepad always uses R3. F4 is Map Secrets' menu key. |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
 | Wheel opacity | 100% | 20–100% |
@@ -63,11 +59,12 @@ The config file has a few more:
 
 - Castlevania: Belmont's Curse, Steam version on Windows x64. Tested on game version 1.1.3 (BuildID 25975867).
 - [BepInEx 6 Unity IL2CPP x64, bleeding edge #788](https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip), or the game's [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) package (same build).
+- [Belmont UI](../BelmontUI) 0.2.0 or newer, for the Mods Settings tab in the pause menu. Optional: without it the mod still works, with the config file as the only way to change settings.
 
 ## Install
 
 1. Install BepInEx if you haven't: extract it into the game folder, start the game once, then exit.
-2. Extract this zip into the game folder, so the mod ends up in `BepInEx/plugins/AbilityWheel/AbilityWheel.dll`.
+2. Extract this zip into the game folder, so the mod ends up in `BepInEx/plugins/AbilityWheel/AbilityWheel.dll` and the library in `BepInEx/plugins/BelmontUI/BelmontUI.dll`.
 3. Start the game. The wheel fills itself with the first cards you own. Rearrange them in the Tarot menu.
 
 To upgrade, overwrite the files; your settings are kept.
@@ -90,7 +87,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Building from source
 
-Needs the .NET SDK and the game with BepInEx installed and started once (BepInEx generates the interop assemblies the project references). `dotnet build -c Release` builds the mod and copies `AbilityWheel.dll` into the game's `BepInEx/plugins/AbilityWheel`, so close the game first. If the game isn't in the default Steam folder, add `-p:GameDir="<game folder>"`.
+Needs the .NET SDK and the game with BepInEx installed and started once (BepInEx generates the interop assemblies the project references). `dotnet build -c Release` builds the mod and copies `AbilityWheel.dll` into the game's `BepInEx/plugins/AbilityWheel`, so close the game first. If the game isn't in the default Steam folder, add `-p:GameDir="<game folder>"`. Build [Belmont UI](../BelmontUI) first: the project references its dll from `BepInEx/plugins/BelmontUI`.
 
 ## License
 
@@ -98,11 +95,11 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.1.0**: settings moved from a popup in the Tarot menu (F3 / R3) to the pause menu's Mods Settings tab, which the Belmont UI plugin adds (optional dependency). The SettingsKey entry is gone.
 - **1.0.0**: first release.
 
 ## Credits
 
 - [BepInEx](https://github.com/BepInEx/BepInEx), with Il2CppInterop and HarmonyX.
 - [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) by KZekai.
-- Map Secrets, whose in-menu popup inspired the settings panel.
 - Belmont Minimap, for the shared MODS tab that other mods can add their settings to.

@@ -14,7 +14,7 @@ public partial class Wheel
 {
     // From the game's Player_InputBindings: face buttons, Esc, tabs (Q/E, LB/RB) and sub-tabs
     // (1/3, LT/RT), which double as keyboard slot keys.
-    private static readonly (string Map, string Action)[] BlockedWhileAssigning =
+    internal static readonly (string Map, string Action)[] BlockedWhileAssigning =
     {
         ("UI", "Validate"), ("UI", "Close"), ("UI", "GameMenuClose"), ("UI", "MenuContextualValidate"),
         ("UI", "MenuContextualCancel"), ("UI", "MenuContextualReset"), ("UI", "Map_PlaceMarker"),
@@ -44,8 +44,6 @@ public partial class Wheel
     [HideFromIl2Cpp]
     private void UpdateAssign()
     {
-        if (_settingsOpen || _settingsWaitRelease)
-            return;
         var pad = Gamepad.current;
         if (_waitFaceRelease)
         {
@@ -195,9 +193,7 @@ public partial class Wheel
                 : "Y X B A";
             return $"Choose a slot  {slots}      Cancel  {(keyboard ? "Esc" : "L3")}";
         }
-        string settings = $"Settings  {(keyboard ? Keys.Label(Plugin.SettingsKey.Value) : "R3")}";
-        return HighlightedCard == null ? settings
-            : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}      {settings}";
+        return HighlightedCard == null ? "" : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
     }
 
     [HideFromIl2Cpp]

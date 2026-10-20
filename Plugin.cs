@@ -7,10 +7,11 @@ using HarmonyLib;
 namespace AbilityWheel;
 
 [BepInPlugin(Guid, "Ability Wheel", Version)]
+[BepInDependency(MenuGlue.LibGuid, BepInDependency.DependencyFlags.SoftDependency)]
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.0.0";
+    public const string Version = "1.1.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -23,7 +24,6 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string>[] Slots;      // Wheel.SlotLabels order
     internal static ConfigEntry<string>[] SlotKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<string> AssignKey;
-    internal static ConfigEntry<string> SettingsKey;
     internal static ConfigEntry<bool> AutoFillSlots;
     internal static ConfigEntry<bool> KeepHomeCard;
     internal static ConfigEntry<string> StayEquipped;
@@ -70,10 +70,6 @@ public class Plugin : BasePlugin
                 "In the Arcanas menu: puts the highlighted card on the wheel (then press a slot key). " +
                 "The gamepad uses L3.",
                 new AcceptableValueList<string>(Keys.AssignKeyChoices)));
-        SettingsKey = Config.Bind("Keyboard", "SettingsKey", "F3",
-            new ConfigDescription(
-                "In the Tarot menu: opens the Ability Wheel settings. The gamepad uses R3.",
-                new AcceptableValueList<string>(Keys.SettingsKeyChoices)));
 
         AutoFillSlots = Config.Bind("Cards", "AutoFillSlots", true,
             "Fill empty slots with owned cards that aren't on the wheel yet.");
@@ -111,6 +107,7 @@ public class Plugin : BasePlugin
             "Log the actions Rose starts and stops for a few seconds after each cast or Y press " +
             "([trace] in BepInEx\\LogOutput.log). For checking how a card behaves on the wheel.");
 
+        MenuGlue.Register();
         AddComponent<Wheel>();
 
         // One patch class at a time, so one that fails (after a game update, say) only turns off
