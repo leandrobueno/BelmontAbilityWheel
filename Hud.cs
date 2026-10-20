@@ -16,6 +16,8 @@ internal sealed class Hud
     private const float Gap = 8f;
 
     private const float Border = 3f;
+    private static readonly float Tip = Tile / Mathf.Sqrt(2f) - 12f;   // letter and cost, from the center
+    private const float SpikeDrop = 16f;   // the gold card's cost, moved down off its top spike
 
     private const float FadeOutSeconds = 0.3f;   // from solid to hidden, when the game HUD fades
 
@@ -24,6 +26,10 @@ internal sealed class Hud
     private static readonly Color GoldColor = new(0.78f, 0.6f, 0.3f, 1f);      // the Y card
     private static readonly Color ActiveColor = new(0.4f, 0.65f, 0.95f, 1f);   // a StayEquipped card that is out
     private static readonly Color GrayedIcon = new(0.25f, 0.25f, 0.25f, 1f);
+    // The game's own slot art (Art), as the Equipment and Arcanas menus draw it.
+    private static readonly Color DimFrame = new(0.55f, 0.55f, 0.55f, 1f);
+    private static readonly Color RimColor = new(0.55f, 0.78f, 1f, 1f);       // blue rim of a StayEquipped card that is out
+    private static readonly Color MaskColor = new(0.085f, 0.085f, 0.085f, 0.063f);   // as the relic slots' icon mask
     private static readonly Color[] LetterColors =   // Y, X, B, A as on an Xbox pad
     {
         new(1f, 0.8f, 0.2f), new(0.35f, 0.6f, 1f), new(1f, 0.35f, 0.35f), new(0.45f, 0.85f, 0.35f),
@@ -31,7 +37,10 @@ internal sealed class Hud
 
     private sealed class Slot
     {
-        internal Image[] Frame;
+        internal Image[] Frame;           // plain tiles
+        internal Image Diamond;           // native art: the frame, plus a blue rim and gold spikes
+        internal Image Rim;
+        internal Image Spikes;
         internal Image Icon;
         internal TextMeshProUGUI Letter;
         internal TextMeshProUGUI Name;
@@ -60,6 +69,10 @@ internal sealed class Hud
     internal Hud()
     {
         _canvas = Ui.NewCanvas("AbilityWheelHud", 20000);   // above the game's menus, for the Tarot menu
+        Art.Load();
+        // The game's gold-leaf shader reads these.
+        _canvas.GetComponent<Canvas>().additionalShaderChannels |= AdditionalCanvasShaderChannels.TexCoord1 |
+            AdditionalCanvasShaderChannels.Normal | AdditionalCanvasShaderChannels.Tangent;
 
         _panel = Ui.NewRect("Panel", _canvas.transform, Vector2.zero, Vector2.zero);
         _panel.anchorMin = _panel.anchorMax = _panel.pivot = new Vector2(1f, 0f);
@@ -150,8 +163,11 @@ internal sealed class Hud
                 slot.State = -1;
                 var icon = card == null ? null : IconFor(card);
                 slot.Icon.sprite = icon;
+                if (slot.Diamond != null && icon != null)
+                    FitIcon(slot.Icon, costs == null);
                 slot.Icon.enabled = icon != null;
-                slot.Name.text = card == null ? "-" : icon == null ? Cards.DisplayName(card) : "";
+                // The native empty slot is just the dark diamond, as in the game's menus.
+                slot.Name.text = card == null ? slot.Diamond != null ? "" : "-" : icon == null ? Cards.DisplayName(card) : "";
             }
 
             bool hasCost = costs != null;
@@ -168,9 +184,7 @@ internal sealed class Hud
                 slot.State = state;
                 slot.Icon.color = affordable ? Color.white : GrayedIcon;
                 slot.Name.color = affordable ? Color.white : GrayedIcon;
-                var frame = isActive ? ActiveColor : isGold ? GoldColor : FrameColor;
-                foreach (var bar in slot.Frame)
-                    bar.color = frame;
+                Paint(slot, card != null && !affordable, isGold && !isActive, isActive);
                 slot.Cost.gameObject.SetActive(showCost);
             }
             if (showCost)
@@ -219,11 +233,103 @@ internal sealed class Hud
         return null;
     }
 
+    // Blue wins over gold, as before: a card on loan that is also the equipped one.
+    private static void Paint(Slot slot, bool dim, bool gold, bool active)
+    {
+        if (slot.Diamond == null)
+        {
+            var frame = active ? ActiveColor : gold ? GoldColor : FrameColor;
+            foreach (var bar in slot.Frame)
+                bar.color = frame;
+            return;
+        }
+
+        slot.Diamond.sprite = gold && Art.GoldFrame != null ? Art.GoldFrame : Art.Frame;
+        var material = gold && Art.Gold != null ? Art.Gold : Art.Iron;
+        if (material != null)
+            slot.Diamond.material = material;
+        // Tinting stands in for a missing rim, or for gold art that wasn't found at all.
+        var color = dim ? DimFrame : Color.white;
+        if (active && slot.Rim == null)
+            color = ActiveColor;
+        else if (gold && slot.Spikes == null && Art.GoldFrame == null && Art.Gold == null)
+            color = GoldColor;
+        slot.Diamond.color = color;
+        slot.Rim?.gameObject.SetActive(active);
+        slot.Spikes?.gameObject.SetActive(gold);
+        slot.Cost.rectTransform.anchoredPosition = new Vector2(0f, gold && slot.Spikes != null ? Tip - SpikeDrop : Tip);
+    }
+
+    // Spell art is drawn to fill a diamond, so it goes in larger than the mask, as the menus do.
+    // Weapon icons are full squares made for the Armoury grid: they keep that upright
+    // orientation (easier to recognise) and shrink until the mask trims only the square's corners.
+    private static void FitIcon(Image icon, bool weapon)
+    {
+        float mask = Tile * Mathf.Sqrt(2f) * 0.8f;
+        float side = weapon ? mask * 0.58f : mask * 1.25f;
+        icon.rectTransform.sizeDelta = new Vector2(side, side);
+    }
+
     private Slot NewSlot(int index, Vector2 center, TMP_FontAsset font)
     {
         var root = Ui.NewRect(Wheel.SlotLabels[index], _panel, center, new Vector2(Tile, Tile));
         var slot = new Slot();
 
+        if (Art.Native)
+            slot.Icon = NewNativeFrame(slot, root);
+        else
+        {
+            NewTileFrame(slot, root);
+            slot.Icon = Ui.NewImage("Icon", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), Color.white);
+        }
+        slot.Icon.preserveAspect = true;
+        slot.Icon.enabled = false;
+
+        slot.Name = Ui.NewText("Name", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), font, 15f, Color.white);
+        slot.Name.enableWordWrapping = true;
+
+        slot.Letter = Ui.NewText("Letter", root, new Vector2(0f, -Tip), new Vector2(40f, 30f), font, 24f, LetterColors[index]);
+        slot.Letter.text = Wheel.SlotLabels[index];
+        slot.Letter.fontStyle = FontStyles.Bold;
+        slot.Cost = Ui.NewText("Cost", root, new Vector2(0f, Tip), new Vector2(60f, 26f), font, 20f, Color.white);
+        slot.Cost.gameObject.SetActive(false);
+        return slot;
+    }
+
+    // The relic slot's layout: an upright diamond as wide as the turned tile, the icon inside a
+    // diamond mask at 80% of it (FitIcon sizes it). Returns the icon.
+    private static Image NewNativeFrame(Slot slot, RectTransform root)
+    {
+        float size = Tile * Mathf.Sqrt(2f);   // tip to tip
+        slot.Diamond = Ui.NewImage("Frame", root, Vector2.zero, new Vector2(size, size), Color.white);
+        slot.Diamond.sprite = Art.Frame;
+        if (Art.Iron != null)
+            slot.Diamond.material = Art.Iron;
+
+        var mask = Ui.NewImage("IconMask", root, Vector2.zero, new Vector2(size * 0.8f, size * 0.8f), MaskColor);
+        mask.sprite = Art.Frame;
+        mask.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+        var icon = Ui.NewImage("Icon", mask.transform, Vector2.zero, new Vector2(size, size), Color.white);
+
+        if (Art.Rim != null)
+        {
+            // The white brush square turned 45 degrees: a hand-painted rim just outside the frame.
+            slot.Rim = Ui.NewImage("Rim", root, Vector2.zero, new Vector2(size * 0.78f, size * 0.78f), RimColor);
+            slot.Rim.sprite = Art.Rim;
+            slot.Rim.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            slot.Rim.gameObject.SetActive(false);
+        }
+        if (Art.Spikes != null)
+        {
+            slot.Spikes = Ui.NewImage("Equipped", root, Vector2.zero, new Vector2(size * 1.12f, size * 1.12f), Color.white);
+            slot.Spikes.sprite = Art.Spikes;
+            slot.Spikes.gameObject.SetActive(false);
+        }
+        return icon;
+    }
+
+    private static void NewTileFrame(Slot slot, RectTransform root)
+    {
         // The frame is 4 bars outside the tile, never under it: with HudOpacity below 1 a frame
         // under the see-through tile shows through (badly with HDR mods like RenoDX). The top
         // and bottom bars also cover the corners.
@@ -238,20 +344,5 @@ internal sealed class Hud
             Ui.NewImage("FrameLeft", diamond, new Vector2(-edge, 0f), new Vector2(Border, Tile), FrameColor),
             Ui.NewImage("FrameRight", diamond, new Vector2(edge, 0f), new Vector2(Border, Tile), FrameColor),
         };
-
-        slot.Icon = Ui.NewImage("Icon", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), Color.white);
-        slot.Icon.preserveAspect = true;
-        slot.Icon.enabled = false;
-
-        slot.Name = Ui.NewText("Name", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), font, 15f, Color.white);
-        slot.Name.enableWordWrapping = true;
-
-        float tip = Tile / Mathf.Sqrt(2f) - 12f;
-        slot.Letter = Ui.NewText("Letter", root, new Vector2(0f, -tip), new Vector2(40f, 30f), font, 24f, LetterColors[index]);
-        slot.Letter.text = Wheel.SlotLabels[index];
-        slot.Letter.fontStyle = FontStyles.Bold;
-        slot.Cost = Ui.NewText("Cost", root, new Vector2(0f, tip), new Vector2(60f, 26f), font, 20f, Color.white);
-        slot.Cost.gameObject.SetActive(false);
-        return slot;
     }
 }

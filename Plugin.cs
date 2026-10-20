@@ -11,7 +11,7 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.3.0";
+    public const string Version = "1.4.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =

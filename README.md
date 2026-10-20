@@ -15,17 +15,17 @@ Your normal spell button still casts your equipped spell, as before, and LB on i
 - **Tap RB as usual.** A quick tap still interacts (on release). Only a hold opens the wheel.
 - **Assign cards in the Tarot menu.** Highlight a card, click **L3** (keyboard **F**), then press the slot's button (keyboard **1–4**). If the card was already on the wheel, the two slots swap. L3 again (keyboard **Esc**) cancels.
 - **HUD in the bottom-right corner.**
-  - Each tile shows the card's icon.
+  - Each card sits in a gold diamond frame, the same art as the game's Equipment and Tarot menus, with the card's icon inside.
   - A card you can't afford right now is grayed out.
-  - Your Y spell has a gold frame, and Mirror Walk shows a blue frame while its mirror is out.
-  - Holding RB enlarges the tiles and shows their mana costs.
+  - Your Y spell has a bright gold frame with the game's four gold "equipped" spikes, and Mirror Walk gets a blue rim while its mirror is out.
+  - Holding RB enlarges the wheel and shows the mana costs.
   - Labels follow the device you last used (Y X B A or 1 2 3 4).
   - Fades out together with the game's own HUD, for example when the HUD Auto Hide mod hides it. Holding RB always shows it.
 - **Weapon wheel.** Hold RB, then LB, and press a face button to switch to that slot's weapon. The weapon stays equipped, as if you had picked it in the Equipment menu, and you keep attacking with X.
   - Nothing changes until you put a weapon on the wheel: in the **Equipment** menu, highlight a weapon, click **L3** (keyboard **F**), then press the slot's button (keyboard **5–8**).
   - The order matters: RB first, then LB. LB pressed first drinks a potion, as always.
-  - A switch pressed in the middle of an attack happens as soon as the swing is over (its tile has a blue frame while it waits), the same moment you could walk out of the attack. Keeping on attacking for 2 seconds cancels it.
-  - While LB is held, and for a moment after a switch, the HUD shows the weapons; the equipped one has a gold frame.
+  - A switch pressed in the middle of an attack happens as soon as the swing is over (its slot has a blue rim while it waits), the same moment you could walk out of the attack. Keeping on attacking for 2 seconds cancels it.
+  - While LB is held, and for a moment after a switch, the HUD shows the weapons, upright as in the Armoury; the equipped one has the gold frame and spikes.
 - **Settings in the pause menu:** the **MODS SETTINGS** tab, after SYSTEM (title screen: Settings → Mods Settings), with the Belmont UI plugin (see Requirements).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
@@ -95,7 +95,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Troubleshooting
 
-`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[weapon]`, `[assign]`, `[hud]`, `[cards]` and `[weapons]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
+`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[weapon]`, `[assign]`, `[hud]`, `[art]`, `[cards]` and `[weapons]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
 
 ## Building from source
 
@@ -107,6 +107,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.4.0**: native look: the wheel uses the game's own slot art (the gold diamond frames of the Equipment and Tarot menus), the four gold spikes on the equipped card, a blue rim on a card that stays out or a weapon switch that waits, grayed-out frames for cards you can't afford, and weapon icons upright as in the Armoury. Falls back to the plain tiles if the art isn't found.
 - **1.3.0**: weapon wheel: hold RB, then LB, and press Y/X/B/A (keyboard 5–8) to switch between 4 weapons; assign them in the Equipment menu with L3.
 - **1.2.0**: *Fade with game HUD* (on by default): the wheel fades out while the game's HUD is hidden, for example by HUD Auto Hide, and holding the wheel button always shows it.
 - **1.1.0**: settings moved from a popup in the Tarot menu (F3 / R3) to the pause menu's Mods Settings tab, which the Belmont UI plugin adds (optional dependency). The SettingsKey entry is gone.
