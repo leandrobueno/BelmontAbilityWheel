@@ -103,6 +103,19 @@ public partial class Wheel : MonoBehaviour
             TrackHome();
             UpdateAssign();
             TrackModifier();
+            TrackPage();
+            if (_pendingWeaponSlot < 0)
+                PollWeaponKeys();
+            if (_pendingWeaponSlot >= 0)
+            {
+                int weaponSlot = _pendingWeaponSlot;
+                _pendingWeaponSlot = -1;
+                RequestWeapon(weaponSlot);
+            }
+            else
+            {
+                UpdateWeaponSwitch();
+            }
             if (_pendingSlot < 0)
                 PollSlotKeys();
             if (_pendingSlot >= 0)
@@ -165,15 +178,39 @@ public partial class Wheel : MonoBehaviour
                 return false;
             }
 
+            bool sameDevice = control.device != null && control.device.Pointer == modifier.device.Pointer;
+
+            // LB pressed while the wheel button is down opens the weapon page instead of drinking.
+            // The wheel counts as used, so the wheel button's release won't replay Interact.
+            var page = PageButton();
+            if (page != null && control.Pointer == page.Pointer && modifier.isPressed && sameDevice)
+            {
+                _swallowed.Add(name);
+                if (!_pageOpen)
+                {
+                    _pageOpen = true;
+                    _lastWheelPressFrame = Time.frameCount;
+                    Plugin.Logger.LogDebug($"[weapon] page open ({name} held back)");
+                }
+                return false;
+            }
+
             int slot = Array.IndexOf(FaceButtons, control.name);
-            if (slot >= 0 && modifier.isPressed && control.device != null && control.device.Pointer == modifier.device.Pointer)
+            if (slot >= 0 && modifier.isPressed && sameDevice)
             {
                 _swallowed.Add(name);
                 if (ctx.phase == InputActionPhase.Performed)
                 {
-                    _pendingSlot = slot;
-                    _pendingControl = control.TryCast<ButtonControl>();
                     _lastWheelPressFrame = Time.frameCount;
+                    if (_pageOpen)
+                    {
+                        _pendingWeaponSlot = slot;
+                    }
+                    else
+                    {
+                        _pendingSlot = slot;
+                        _pendingControl = control.TryCast<ButtonControl>();
+                    }
                 }
                 return false;
             }
@@ -247,8 +284,9 @@ public partial class Wheel : MonoBehaviour
         _warnedIncomplete = false;
         Plugin.Logger.LogInfo(
             $"[wheel] ready on '{entity.gameObject.name}', casting through {trigger.name}, " +
-            $"home card {_home?.itemID ?? "none"}");
+            $"home card {_home?.itemID ?? "none"}, weapon {inventoryComponent.inventory.GetEquippedWeapon()?.itemID ?? "none"}");
         RefreshSlots();
+        RefreshWeapons();
         return true;
     }
 
@@ -303,6 +341,7 @@ public partial class Wheel : MonoBehaviour
         _loanSticky = false;
         _heldBackActions.Clear();
         _swallowed.Clear();
+        ForgetWeapons();
         CancelAssign();
         HideHud();
     }
@@ -431,7 +470,7 @@ public partial class Wheel : MonoBehaviour
 
         var inventory = Inventory;
         if (inventory != null && !Cards.Same(inventory.GetEquippedSpell(), _home))
-            inventory.EquipSpellFromInventory(_home);
+            inventory.EquipSpellFromInventory(Cards.Live<SpellItemData>(_home) ?? _home);
         Plugin.Logger.LogInfo(
             $"[home] {_onLoan.itemID} -> {_home.itemID}: {reason}, {Time.unscaledTime - _loanedAt:0.00}s after the cast");
         _onLoan = null;
@@ -475,6 +514,7 @@ public partial class Wheel : MonoBehaviour
         _modifierDownFrame = Time.frameCount;
         // No Settings.Reload() here: it could revert unsaved MODS-menu edits.
         RefreshSlots();
+        RefreshWeapons();
         Plugin.Logger.LogDebug(
             $"[wheel] {Plugin.Modifier.Value} down: gameplay input {GameplayInputActive()} " +
             $"(listening {_input._isListeningUnityInput}, Player map {PlayerMapEnabled()}, time scale {Time.timeScale:0.##})");
@@ -484,7 +524,7 @@ public partial class Wheel : MonoBehaviour
     [HideFromIl2Cpp]
     private void PollSlotKeys()
     {
-        if (SpellsMenuOpen || !GameplayInputActive())
+        if (MenuOpen || !GameplayInputActive())
             return;
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
@@ -629,7 +669,7 @@ public partial class Wheel : MonoBehaviour
         string back = "";
         if (!_castWasEquipped && _castPrevious != null && !Cards.Same(_castPrevious, inventory.GetEquippedSpell()))
         {
-            inventory.EquipSpellFromInventory(_castPrevious);
+            inventory.EquipSpellFromInventory(Cards.Live<SpellItemData>(_castPrevious) ?? _castPrevious);
             back = $", back to {_castPrevious.itemID}";
         }
         Plugin.Logger.LogInfo(
@@ -714,7 +754,8 @@ public partial class Wheel : MonoBehaviour
         if (started.Length > 0 || stopped.Length > 0)
             Plugin.Logger.LogInfo(
                 $"[trace] t={now:0.00} +[{string.Join(", ", started)}] -[{string.Join(", ", stopped)}] " +
-                $"equipped {Inventory.GetEquippedSpell()?.itemID ?? "none"}, mana {Mana():0}");
+                $"equipped {Inventory.GetEquippedSpell()?.itemID ?? "none"}, mana {Mana():0}, " +
+                $"weapon {Inventory.GetEquippedWeapon()?.itemID ?? "none"}");
         _tracedActions = names.ToArray();
     }
 
@@ -739,9 +780,11 @@ public partial class Wheel : MonoBehaviour
     private void UpdateHud()
     {
         string mode = Plugin.HudVisibility.Value;
-        bool inMenu = SpellsMenuOpen;
+        bool inMenu = MenuOpen;
+        bool weapons = ShowingWeapons;
         bool visible = !_hudBroken &&
-            (inMenu || (mode != "Never" && GameplayInputActive() && (mode != "WhileHeld" || _modifierDown)));
+            (inMenu || (mode != "Never" && GameplayInputActive() &&
+                (mode != "WhileHeld" || _modifierDown || weapons)));
         try
         {
             if (_hud == null || !_hud.Alive)
@@ -755,15 +798,23 @@ public partial class Wheel : MonoBehaviour
             if (!visible)
                 return;
 
+            _hud.SetHint(inMenu ? MenuHint() : "");
+            var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
+            _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(keys, k => Keys.Label(k.Value)) : null);
+            bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
+            // Using the wheel always shows it, like the Tarot menu does.
+            float fade = Plugin.FollowGameHud.Value && !inMenu && !held && !weapons ? GameHud.Alpha() : 1f;
+            if (weapons)
+            {
+                // Gold: the equipped weapon. Blue: a switch waiting for the current attack to end.
+                _hud.Refresh(_slotWeapons, null, 0f, Inventory?.GetEquippedWeapon(), _waitingWeapon, held, fade);
+                return;
+            }
+
             float mana = Mana();
             var gold = Plugin.KeepHomeCard.Value && _home != null ? _home : Inventory?.GetEquippedSpell();
             for (int slot = 0; slot < _slotSpells.Length; slot++)
                 _slotCosts[slot] = _slotSpells[slot] == null ? 0 : Cost(_slotSpells[slot]);
-            _hud.SetHint(inMenu ? MenuHint() : "");
-            _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(Plugin.SlotKeys, k => Keys.Label(k.Value)) : null);
-            bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
-            // Using the wheel always shows it, like the Tarot menu does.
-            float fade = Plugin.FollowGameHud.Value && !inMenu && !held ? GameHud.Alpha() : 1f;
             _hud.Refresh(_slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held, fade);
         }
         catch (Exception e)

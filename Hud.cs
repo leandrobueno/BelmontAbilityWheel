@@ -36,7 +36,7 @@ internal sealed class Hud
         internal TextMeshProUGUI Letter;
         internal TextMeshProUGUI Name;
         internal TextMeshProUGUI Cost;
-        internal SpellItemData Card;
+        internal ItemData Card;           // a spell card or a weapon
         internal int State = -1;           // to touch the UI only on changes
     }
 
@@ -118,8 +118,8 @@ internal sealed class Hud
 
     // fade: how visible the game's HUD is (1 = fully). The tiles follow it down over at least
     // FadeOutSeconds, so letting go of the modifier doesn't make them vanish at once, and come
-    // back at once.
-    internal void Refresh(SpellItemData[] cards, int[] costs, float mana, SpellItemData gold, SpellItemData active, bool held,
+    // back at once. costs is null for weapons, which cost nothing.
+    internal void Refresh(ItemData[] cards, int[] costs, float mana, ItemData gold, ItemData active, bool held,
         float fade)
     {
         // Set only on changes: touching the layout every frame makes Unity rebuild the UI.
@@ -154,11 +154,13 @@ internal sealed class Hud
                 slot.Name.text = card == null ? "-" : icon == null ? Cards.DisplayName(card) : "";
             }
 
-            bool affordable = card != null && costs[i] <= mana;
+            bool hasCost = costs != null;
+            bool affordable = card != null && (!hasCost || costs[i] <= mana);
             bool isGold = Cards.Same(card, gold);
             bool isActive = Cards.Same(card, active);
-            int state = (affordable ? 1 : 0) | (isGold ? 2 : 0) | (held ? 4 : 0) | (isActive ? 8 : 0);
-            if (state == slot.State && (!held || card == null))
+            bool showCost = held && hasCost && card != null;
+            int state = (affordable ? 1 : 0) | (isGold ? 2 : 0) | (showCost ? 4 : 0) | (isActive ? 8 : 0);
+            if (state == slot.State && !showCost)
                 continue;
 
             if (state != slot.State)
@@ -169,9 +171,9 @@ internal sealed class Hud
                 var frame = isActive ? ActiveColor : isGold ? GoldColor : FrameColor;
                 foreach (var bar in slot.Frame)
                     bar.color = frame;
-                slot.Cost.gameObject.SetActive(held && card != null);
+                slot.Cost.gameObject.SetActive(showCost);
             }
-            if (held && card != null)
+            if (showCost)
             {
                 string cost = costs[i].ToString();
                 if (slot.Cost.text != cost)
@@ -183,7 +185,7 @@ internal sealed class Hud
 
     // Loaded through the game's own loader into its "Always" context, which keeps it for the
     // whole session.
-    private Sprite IconFor(SpellItemData card)
+    private Sprite IconFor(ItemData card)
     {
         string id = card.itemID ?? card.name;
         if (_icons.TryGetValue(id, out var cached) && cached != null)

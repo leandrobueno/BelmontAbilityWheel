@@ -40,7 +40,8 @@ internal static class MenuGlue
         {
             BelmontUi.Settings.Register(Plugin.Guid, "Ability Wheel", page =>
             {
-                page.Summary = "Cast up to 4 Tarot spells: hold the wheel button and press Y/X/B/A.";
+                page.Summary = "Cast up to 4 Tarot spells: hold the wheel button and press Y/X/B/A. " +
+                    "Hold LB too to switch between 4 weapons.";
                 foreach (var row in SettingRows.All())
                 {
                     switch (row.Kind)

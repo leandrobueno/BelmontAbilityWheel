@@ -1,11 +1,12 @@
 # Ability Wheel
 
-An ability wheel for **Castlevania: Belmont's Curse**: put up to 4 Tarot spells on the wheel and cast any of them at once, without going through the Tarot menu.
+An ability wheel for **Castlevania: Belmont's Curse**: put up to 4 Tarot spells on the wheel and cast any of them at once, without going through the Tarot menu. A second page switches between up to 4 weapons.
 
-- **Gamepad:** hold **RB** and press **Y / X / B / A**.
-- **Keyboard:** press **1 / 2 / 3 / 4**. No hold needed.
+- **Spells, gamepad:** hold **RB** and press **Y / X / B / A**.
+- **Weapons, gamepad:** hold **RB**, then also hold **LB**, and press **Y / X / B / A**.
+- **Keyboard:** press **1 / 2 / 3 / 4** for spells and **5 / 6 / 7 / 8** for weapons. No hold needed.
 
-Your normal spell button still casts your equipped spell, as before.
+Your normal spell button still casts your equipped spell, as before, and LB on its own still drinks a potion.
 
 ## Features
 
@@ -20,6 +21,11 @@ Your normal spell button still casts your equipped spell, as before.
   - Holding RB enlarges the tiles and shows their mana costs.
   - Labels follow the device you last used (Y X B A or 1 2 3 4).
   - Fades out together with the game's own HUD, for example when the HUD Auto Hide mod hides it. Holding RB always shows it.
+- **Weapon wheel.** Hold RB, then LB, and press a face button to switch to that slot's weapon. The weapon stays equipped, as if you had picked it in the Equipment menu, and you keep attacking with X.
+  - Nothing changes until you put a weapon on the wheel: in the **Equipment** menu, highlight a weapon, click **L3** (keyboard **F**), then press the slot's button (keyboard **5–8**).
+  - The order matters: RB first, then LB. LB pressed first drinks a potion, as always.
+  - A switch pressed in the middle of an attack happens as soon as the swing is over (its tile has a blue frame while it waits), the same moment you could walk out of the attack. Keeping on attacking for 2 seconds cancels it.
+  - While LB is held, and for a moment after a switch, the HUD shows the weapons; the equipped one has a gold frame.
 - **Settings in the pause menu:** the **MODS SETTINGS** tab, after SYSTEM (title screen: Settings → Mods Settings), with the Belmont UI plugin (see Requirements).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
@@ -42,7 +48,9 @@ You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the f
 |---|---|---|
 | Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Light Parry, so it's a poor choice. |
 | Keyboard key for slot Y / X / B / A | 1 / 2 / 3 / 4 | Number keys, Q, F, G, T, V, Z, B or the mouse side buttons |
-| Add to wheel key (keyboard) | F | The gamepad always uses L3 |
+| Add to wheel key (keyboard) | F | Tarot and Equipment menus. The gamepad always uses L3 |
+| Weapon wheel | On | Hold the wheel button, then LB, and press Y/X/B/A to switch weapons. Off when the wheel button is LB |
+| Weapon key for slot Y / X / B / A | 5 / 6 / 7 / 8 | Same choices as the spell keys |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
 | Fade with game HUD | On | Fades the cards out while the game's HUD (health and mana) is hidden, for example by HUD Auto Hide. Holding the wheel button or the Tarot menu always shows them. |
@@ -55,7 +63,8 @@ The config file has a few more:
 - `AutoFillSlots`: fill empty slots with cards you own.
 - `StayEquipped`: cards that behave like Mirror Walk.
 - `TraceActions`: detailed log for checking a card's behavior.
-- `SlotY` to `SlotA`: the cards on the wheel, by card ID.
+- `SlotY` to `SlotA` under `[Cards]`: the cards on the wheel, by card ID.
+- `SlotY` to `SlotA` under `[Weapons]`: the weapons on the wheel, by weapon ID (for example `WeaponSpearTier4`).
 
 ## Requirements
 
@@ -86,7 +95,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Troubleshooting
 
-`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[assign]`, `[hud]` and `[cards]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
+`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[weapon]`, `[assign]`, `[hud]`, `[cards]` and `[weapons]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
 
 ## Building from source
 
@@ -98,6 +107,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.3.0**: weapon wheel: hold RB, then LB, and press Y/X/B/A (keyboard 5–8) to switch between 4 weapons; assign them in the Equipment menu with L3.
 - **1.2.0**: *Fade with game HUD* (on by default): the wheel fades out while the game's HUD is hidden, for example by HUD Auto Hide, and holding the wheel button always shows it.
 - **1.1.0**: settings moved from a popup in the Tarot menu (F3 / R3) to the pause menu's Mods Settings tab, which the Belmont UI plugin adds (optional dependency). The SettingsKey entry is gone.
 - **1.0.0**: first release.

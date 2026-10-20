@@ -9,18 +9,48 @@ namespace AbilityWheel;
 internal static class Cards
 {
     private static string _lastLogged = "";
+    private static string _lastLoggedWeapons = "";
 
-    internal static List<SpellItemData> Owned(Inventory inventory)
+    private static ItemsManager _itemsManager;
+    private static readonly HashSet<string> _reloaded = new();
+
+    // The inventory's item objects are loaded per room (AbstractLibrary.LoadOrGetElement uses
+    // ResourceContext.Room), so one can be unloaded and destroyed while the inventory still lists
+    // it. The game itself goes by item ID (saves, HasItemInInventory(string)), and its menus load
+    // the item again (InventoryWeaponChecker.TrySetupSlot). So does this: a destroyed item, which
+    // Unity reports as null, is looked up again by ID.
+    internal static T Live<T>(ItemData item) where T : ItemData
     {
-        var result = new List<SpellItemData>();
-        var items = inventory.GetAllItemsOfTypeInInventory(Il2CppType.Of<SpellItemData>());
+        if (item is null)
+            return null;
+        var typed = item.TryCast<T>();
+        if (typed is null)
+            return null;
+        if (typed != null)   // Unity's check: false once destroyed
+            return typed;
+
+        string id = item.itemID;
+        if (_itemsManager == null)
+            _itemsManager = UnityEngine.Object.FindObjectOfType<ItemsManager>();
+        var found = _itemsManager?.FindItem(id)?.TryCast<T>();
+        if (_reloaded.Add(id ?? "?"))
+            Plugin.Logger.LogInfo($"[cards] {id} was unloaded by the game, {(found != null ? "loaded it again" : "can't load it again")}");
+        return found;
+    }
+
+    internal static List<SpellItemData> Owned(Inventory inventory) => OwnedOf<SpellItemData>(inventory);
+
+    private static List<T> OwnedOf<T>(Inventory inventory) where T : ItemData
+    {
+        var result = new List<T>();
+        var items = inventory.GetAllItemsOfTypeInInventory(Il2CppType.Of<T>());
         if (items == null)
             return result;
         foreach (var item in items)
         {
-            var spell = item?.TryCast<SpellItemData>();
-            if (spell != null)
-                result.Add(spell);
+            var live = Live<T>(item);
+            if (live != null)
+                result.Add(live);
         }
         return result;
     }
@@ -75,9 +105,39 @@ internal static class Cards
         }
     }
 
-    internal static string DisplayName(SpellItemData spell)
+    internal static List<WeaponItemData> OwnedWeapons(Inventory inventory) => OwnedOf<WeaponItemData>(inventory);
+
+    // No auto-fill: the weapon page stays out of the way until the player fills a slot.
+    internal static void ResolveWeapons(Inventory inventory, WeaponItemData[] slots)
     {
-        string id = spell.itemID ?? spell.name;
+        var owned = OwnedWeapons(inventory);
+        for (int slot = 0; slot < slots.Length; slot++)
+        {
+            string id = Plugin.WeaponSlots[slot].Value.Trim();
+            slots[slot] = id.Length == 0
+                ? null
+                : owned.FirstOrDefault(w => string.Equals(w.itemID, id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var line = new StringBuilder("[weapons] wheel");
+        for (int slot = 0; slot < slots.Length; slot++)
+        {
+            string id = Plugin.WeaponSlots[slot].Value.Trim();
+            line.Append($" {Wheel.SlotLabels[slot]}={(id.Length == 0 ? "empty" : id)}");
+            if (id.Length > 0 && slots[slot] == null)
+                line.Append(" (not owned)");
+        }
+        line.Append($"; owned: {string.Join(", ", owned.Select(w => w.itemID))}");
+        if (line.ToString() != _lastLoggedWeapons)
+        {
+            _lastLoggedWeapons = line.ToString();
+            Plugin.Logger.LogInfo(_lastLoggedWeapons);
+        }
+    }
+
+    internal static string DisplayName(ItemData item)
+    {
+        string id = item.itemID ?? item.name;
         var name = new StringBuilder();
         for (int i = 0; i < id.Length; i++)
         {
@@ -93,6 +153,7 @@ internal static class Cards
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Any(id => string.Equals(id, spell.itemID, StringComparison.OrdinalIgnoreCase));
 
-    internal static bool Same(SpellItemData a, SpellItemData b) =>
-        a != null && b != null && a.Pointer == b.Pointer;
+    // By ID: the same item can be two objects, one of them destroyed (see Live).
+    internal static bool Same(ItemData a, ItemData b) =>
+        a is not null && b is not null && (a.Pointer == b.Pointer || (a.itemID != null && a.itemID == b.itemID));
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BepInEx.Configuration;
 using Il2CppInterop.Runtime.Attributes;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -7,9 +8,9 @@ using UnityEngine.InputSystem.Controls;
 
 namespace AbilityWheel;
 
-// Assigning cards in the Arcanas (Spells) menu, where L3 is free. While a slot is being chosen,
-// the menu's own actions on those buttons and keys are switched off so the press only assigns;
-// they come back once it's released.
+// Assigning cards in the Arcanas (Spells) menu and weapons in the Equipment menu, where L3 is
+// free. While a slot is being chosen, the menu's own actions on those buttons and keys are
+// switched off so the press only assigns; they come back once it's released.
 public partial class Wheel
 {
     // From the game's Player_InputBindings: face buttons, Esc, tabs (Q/E, LB/RB) and sub-tabs
@@ -23,13 +24,18 @@ public partial class Wheel
     };
 
     private InventorySpellMenuManager _spellsMenu;
+    private InventoryWeaponMenuManager _weaponsMenu;
     private bool _assigning;
-    private SpellItemData _assignCard;
+    private ItemData _assignCard;
+    private ConfigEntry<string>[] _assignSlots;   // Plugin.Slots or Plugin.WeaponSlots
     private bool _waitFaceRelease;
     private readonly List<InputAction> _blockedUiActions = new();
 
     [HideFromIl2Cpp]
     internal void OnSpellsMenuOpened(InventorySpellMenuManager menu) => _spellsMenu = menu;
+
+    [HideFromIl2Cpp]
+    internal void OnWeaponsMenuOpened(InventoryWeaponMenuManager menu) => _weaponsMenu = menu;
 
     [HideFromIl2Cpp]
     internal bool BlocksMenuClicks => _assigning || _waitFaceRelease;
@@ -39,7 +45,18 @@ public partial class Wheel
         _spellsMenu != null && _spellsMenu.opened && _spellsMenu.gameObject.activeInHierarchy;
 
     [HideFromIl2Cpp]
-    private SpellItemData HighlightedCard => SpellsMenuOpen ? _spellsMenu.selectedInventoryItemSlot?._item : null;
+    private bool WeaponsMenuOpen =>
+        _weaponsMenu != null && _weaponsMenu.opened && _weaponsMenu.gameObject.activeInHierarchy;
+
+    [HideFromIl2Cpp]
+    private bool MenuOpen => SpellsMenuOpen || WeaponsMenuOpen;
+
+    // The highlighted card or weapon, if the player owns it.
+    [HideFromIl2Cpp]
+    private ItemData Highlighted =>
+        SpellsMenuOpen ? _spellsMenu.selectedInventoryItemSlot?._item
+        : WeaponsMenuOpen ? _weaponsMenu.selectedInventoryItemSlot?._item
+        : null;
 
     [HideFromIl2Cpp]
     private void UpdateAssign()
@@ -55,10 +72,10 @@ public partial class Wheel
             return;
         }
 
-        if (!SpellsMenuOpen)
+        if (!MenuOpen)
         {
             if (_assigning)
-                EndAssign("the Arcanas menu closed");
+                EndAssign("the menu closed");
             return;
         }
 
@@ -66,14 +83,15 @@ public partial class Wheel
         if (!_assigning)
         {
             if (assignPressed)
-                StartAssign(HighlightedCard);
+                StartAssign(Highlighted, SpellsMenuOpen ? Plugin.Slots : Plugin.WeaponSlots);
             return;
         }
 
         // Slot keys first: the assign key may also be a slot key.
+        var slotKeys = _assignSlots == Plugin.WeaponSlots ? Plugin.WeaponKeys : Plugin.SlotKeys;
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
-            if ((pad != null && FaceButton(pad, slot).wasPressedThisFrame) || Keys.Pressed(Plugin.SlotKeys[slot].Value))
+            if ((pad != null && FaceButton(pad, slot).wasPressedThisFrame) || Keys.Pressed(slotKeys[slot].Value))
             {
                 Assign(slot);
                 return;
@@ -84,16 +102,23 @@ public partial class Wheel
     }
 
     [HideFromIl2Cpp]
-    private void StartAssign(SpellItemData card)
+    private void StartAssign(ItemData card, ConfigEntry<string>[] slots)
     {
         if (card == null)
         {
-            Plugin.Logger.LogInfo("[assign] no card highlighted");
+            Plugin.Logger.LogInfo("[assign] nothing highlighted");
+            return;
+        }
+        // The Equipment menu also lists weapons not found yet.
+        if (slots == Plugin.WeaponSlots && !Inventory.HasItemInInventoryOrEquipped(card))
+        {
+            Plugin.Logger.LogInfo($"[assign] {card.itemID}: not owned");
             return;
         }
         BlockUi(BlockedWhileAssigning);
         _assigning = true;
         _assignCard = card;
+        _assignSlots = slots;
         Plugin.Logger.LogInfo($"[assign] {card.itemID}: waiting for Y/X/B/A");
     }
 
@@ -103,6 +128,7 @@ public partial class Wheel
         Plugin.Logger.LogInfo($"[assign] {_assignCard?.itemID ?? "-"} not assigned: {reason}");
         _assigning = false;
         _assignCard = null;
+        _assignSlots = null;
         if (AnyAssignInputHeld(Gamepad.current))
             _waitFaceRelease = true;
         else
@@ -112,9 +138,11 @@ public partial class Wheel
     [HideFromIl2Cpp]
     private void Assign(int slot)
     {
+        var slots = _assignSlots;
+        string kind = slots == Plugin.WeaponSlots ? "weapon " : "";
         string id = _assignCard.itemID;
-        string old = Plugin.Slots[slot].Value.Trim();
-        int had = Array.FindIndex(Plugin.Slots, s => string.Equals(s.Value.Trim(), id, StringComparison.OrdinalIgnoreCase));
+        string old = slots[slot].Value.Trim();
+        int had = Array.FindIndex(slots, s => string.Equals(s.Value.Trim(), id, StringComparison.OrdinalIgnoreCase));
 
         string note = "";
         if (had == slot)
@@ -125,17 +153,19 @@ public partial class Wheel
         {
             if (had >= 0)
             {
-                Plugin.Slots[had].Value = old;   // saves the config file
+                slots[had].Value = old;   // saves the config file
                 note = $", {SlotLabels[had]} now {(old.Length == 0 ? "empty" : old)}";
             }
-            Plugin.Slots[slot].Value = id;
+            slots[slot].Value = id;
         }
 
-        Plugin.Logger.LogInfo($"[assign] {SlotLabels[slot]} = {id}{note}");
+        Plugin.Logger.LogInfo($"[assign] {kind}{SlotLabels[slot]} = {id}{note}");
         _assigning = false;
         _assignCard = null;
+        _assignSlots = null;
         _waitFaceRelease = true;   // unblock the menu once the slot button is up
         RefreshSlots();
+        RefreshWeapons();
     }
 
     // Only actions that are on, so unblocking restores exactly what was there.
@@ -177,6 +207,7 @@ public partial class Wheel
     {
         _assigning = false;
         _assignCard = null;
+        _assignSlots = null;
         _waitFaceRelease = false;
         UnblockUi();
     }
@@ -188,12 +219,13 @@ public partial class Wheel
         bool keyboard = Keys.KeyboardMode;
         if (_assigning)
         {
+            var keys = _assignSlots == Plugin.WeaponSlots ? Plugin.WeaponKeys : Plugin.SlotKeys;
             string slots = keyboard
-                ? string.Join(" ", Array.ConvertAll(Plugin.SlotKeys, k => Keys.Label(k.Value)))
+                ? string.Join(" ", Array.ConvertAll(keys, k => Keys.Label(k.Value)))
                 : "Y X B A";
             return $"Choose a slot  {slots}      Cancel  {(keyboard ? "Esc" : "L3")}";
         }
-        return HighlightedCard == null ? "" : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
+        return Highlighted == null ? "" : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
     }
 
     [HideFromIl2Cpp]
@@ -210,7 +242,8 @@ public partial class Wheel
     {
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
-            if ((pad != null && FaceButton(pad, slot).isPressed) || Keys.Held(Plugin.SlotKeys[slot].Value))
+            if ((pad != null && FaceButton(pad, slot).isPressed) || Keys.Held(Plugin.SlotKeys[slot].Value) ||
+                Keys.Held(Plugin.WeaponKeys[slot].Value))
                 return true;
         }
         return Keys.Held(Plugin.AssignKey.Value) || (Keyboard.current?.escapeKey.isPressed ?? false);

@@ -11,7 +11,7 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.2.0";
+    public const string Version = "1.3.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -24,6 +24,9 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string>[] Slots;      // Wheel.SlotLabels order
     internal static ConfigEntry<string>[] SlotKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<string> AssignKey;
+    internal static ConfigEntry<bool> WeaponPage;
+    internal static ConfigEntry<string>[] WeaponSlots;  // Wheel.SlotLabels order
+    internal static ConfigEntry<string>[] WeaponKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<bool> AutoFillSlots;
     internal static ConfigEntry<bool> KeepHomeCard;
     internal static ConfigEntry<string> StayEquipped;
@@ -68,9 +71,29 @@ public class Plugin : BasePlugin
         }
         AssignKey = Config.Bind("Keyboard", "AssignKey", "F",
             new ConfigDescription(
-                "In the Arcanas menu: puts the highlighted card on the wheel (then press a slot key). " +
+                "In the Arcanas or Equipment menu: puts the highlighted card or weapon on the wheel (then press a " +
+                "slot key). " +
                 "The gamepad uses L3.",
                 new AcceptableValueList<string>(Keys.AssignKeyChoices)));
+
+        WeaponPage = Config.Bind("Weapons", "WeaponPage", true,
+            "Hold the wheel button, then also hold LB, and press Y/X/B/A to switch to that slot's weapon. " +
+            "The weapon stays equipped. Nothing changes until a weapon slot is filled. LB pressed on its own " +
+            "(or before the wheel button) is still the potion. Off when the wheel button is LB itself.");
+        WeaponSlots = new ConfigEntry<string>[Wheel.SlotLabels.Length];
+        WeaponKeys = new ConfigEntry<string>[Wheel.SlotLabels.Length];
+        for (int slot = 0; slot < WeaponSlots.Length; slot++)
+        {
+            WeaponSlots[slot] = Config.Bind("Weapons", "Slot" + Wheel.SlotLabels[slot], "",
+                $"Weapon equipped by holding the wheel button, then LB, and pressing {Wheel.SlotLabels[slot]}: its ID, " +
+                "for example WeaponOneHandedTier2 or WeaponSpearTier4. The IDs of the weapons you own are listed in " +
+                "BepInEx\\LogOutput.log ([weapons] owned).\n" +
+                "Easier: in the Equipment menu, highlight a weapon, click L3 (keyboard: AssignKey) and press the slot's button.");
+            WeaponKeys[slot] = Config.Bind("Keyboard", "WeaponKey" + Wheel.SlotLabels[slot], "Digit" + (slot + 5),
+                new ConfigDescription(
+                    $"Keyboard key (or mouse side button) that equips the weapon in slot {Wheel.SlotLabels[slot]}.",
+                    new AcceptableValueList<string>(Keys.SlotKeyChoices)));
+        }
 
         AutoFillSlots = Config.Bind("Cards", "AutoFillSlots", true,
             "Fill empty slots with owned cards that aren't on the wheel yet.");
@@ -108,8 +131,8 @@ public class Plugin : BasePlugin
                 new AcceptableValueRange<float>(0f, 800f)));
 
         TraceActions = Config.Bind("Debug", "TraceActions", false,
-            "Log the actions Rose starts and stops for a few seconds after each cast or Y press " +
-            "([trace] in BepInEx\\LogOutput.log). For checking how a card behaves on the wheel.");
+            "Log the actions Rose starts and stops for a few seconds after each cast, weapon switch or Y press " +
+            "([trace] in BepInEx\\LogOutput.log). For checking how a card or weapon behaves on the wheel.");
 
         MenuGlue.Register();
         AddComponent<Wheel>();
@@ -130,6 +153,7 @@ public class Plugin : BasePlugin
                 Log.LogError($"[patch] {type.Name} failed, that part of the mod is off: {e}");
             }
         }
-        Log.LogInfo($"Ability Wheel loaded (hold {Modifier.Value} + Y/X/B/A to cast)");
+        Log.LogInfo($"Ability Wheel loaded (hold {Modifier.Value} + Y/X/B/A to cast" +
+            (WeaponPage.Value ? $", {Modifier.Value} then LB + Y/X/B/A for weapons)" : ")"));
     }
 }

@@ -78,6 +78,40 @@ internal static class NoEquipWhileAssigning
     }
 }
 
+[HarmonyPatch(typeof(InventoryWeaponMenuManager), nameof(InventoryWeaponMenuManager.OnOpened))]
+internal static class WeaponsMenuOpened
+{
+    private static void Postfix(InventoryWeaponMenuManager __instance)
+    {
+        try
+        {
+            Wheel.Instance?.OnWeaponsMenuOpened(__instance);
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"[assign] Equipment menu hook failed: {e}");
+        }
+    }
+}
+
+// While a weapon waits for its slot button, a click (A) must not equip it.
+[HarmonyPatch(typeof(InventoryWeaponMenuManager), nameof(InventoryWeaponMenuManager.OnClickedInventoryItemSlot))]
+internal static class NoWeaponEquipWhileAssigning
+{
+    private static bool Prefix()
+    {
+        try
+        {
+            return !(Wheel.Instance?.BlocksMenuClicks ?? false);
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"[assign] weapon click guard failed: {e}");
+            return true;
+        }
+    }
+}
+
 // So the save holds the home card, not a wheel card on loan.
 [HarmonyPatch(typeof(InventoryComponent), nameof(InventoryComponent.WritePlayerSave))]
 internal static class HomeCardInSaves

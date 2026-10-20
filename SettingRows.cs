@@ -104,9 +104,24 @@ internal static class SettingRows
         }
 
         rows.Add(Choice(Plugin.AssignKey, "加入轮盘按键(键盘)", "Add to wheel key (keyboard)",
-            "在塔罗菜单中选中一张卡牌,按此键后再按对应的键盘按键即可放入轮盘。手柄使用 L3。",
-            "In the Tarot menu, highlight a card, press this key, then a slot key to put it on the wheel. Gamepad: L3.",
+            "在塔罗菜单或装备菜单中选中一张卡牌或一把武器,按此键后再按对应的键盘按键即可放入轮盘。手柄使用 L3。",
+            "In the Tarot or Equipment menu, highlight a card or weapon, press this key, then a slot key to put it " +
+            "on the wheel. Gamepad: L3.",
             Keys.AssignKeyChoices, Keys.AssignKeyChoices));
+
+        rows.Add(Toggle(Plugin.WeaponPage, "武器轮盘", "Weapon wheel",
+            "按住轮盘键后再按住 LB,然后按 Y/X/B/A 切换为该位置的武器,武器会保持装备。在装备菜单中选中武器并按 L3 放入轮盘。单独按 LB 仍是使用药水。",
+            "Hold the wheel button, then also hold LB, and press Y/X/B/A to switch to that slot's weapon; it stays " +
+            "equipped. In the Equipment menu, highlight a weapon and click L3 to put it on the wheel. LB on its own " +
+            "still drinks a potion."));
+        for (int slot = 0; slot < Wheel.SlotLabels.Length; slot++)
+        {
+            string label = Wheel.SlotLabels[slot];
+            rows.Add(Choice(Plugin.WeaponKeys[slot], $"{label} 的武器按键", $"Weapon key for slot {label}",
+                "按下即装备该位置的武器。",
+                "Switches to that slot's weapon at once.",
+                Keys.SlotKeyChoices, keyNames));
+        }
 
         return rows;
     }
