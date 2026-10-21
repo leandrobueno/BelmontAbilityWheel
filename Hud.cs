@@ -62,6 +62,7 @@ internal sealed class Hud
     private float _fade = 1f;
     private float _alpha = -1f;
     private string _letters = "";
+    private bool _lettersShown = true;
 
     // False once Unity has destroyed the canvas, so Wheel builds a new one.
     internal bool Alive => _canvas != null;
@@ -119,6 +120,15 @@ internal sealed class Hud
             _slots[slot].Letter.text = keys == null ? Wheel.SlotLabels[slot] : keys[slot];
             _slots[slot].Letter.color = keys == null ? LetterColors[slot] : Ui.TextColor;
         }
+    }
+
+    internal void ShowLetters(bool show)
+    {
+        if (show == _lettersShown)
+            return;
+        _lettersShown = show;
+        foreach (var slot in _slots)
+            slot.Letter.gameObject.SetActive(show);
     }
 
     internal void SetVisible(bool visible)

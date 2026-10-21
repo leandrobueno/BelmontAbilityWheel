@@ -78,6 +78,14 @@ internal static class SettingRows
                 new[] { "Always", "While holding the wheel button", "Never" },
                 new[] { "始终", "按住轮盘键时", "从不" }),
 
+            Choice(Plugin.ButtonLabels, "按键标签", "Button labels",
+                "何时在卡牌上显示对应按键(Y/X/B/A,使用键盘时为键盘按键)。放入轮盘时始终显示。",
+                "When each card shows its button (Y/X/B/A, or its key after using the keyboard). " +
+                "Always shown while putting a card or weapon on the wheel.",
+                new[] { "Always", "WhileHeld", "Never" },
+                new[] { "Always", "While holding the wheel button", "Never" },
+                new[] { "始终", "按住轮盘键时", "从不" }),
+
             Toggle(Plugin.FollowGameHud, "随游戏 HUD 隐藏", "Fade with game HUD",
                 "游戏 HUD 被隐藏时(例如使用 HUD Auto Hide),轮盘一同淡出。按住轮盘键或在塔罗菜单中时始终显示。",
                 "Fade the cards out while the game's HUD is hidden, for example by HUD Auto Hide. " +

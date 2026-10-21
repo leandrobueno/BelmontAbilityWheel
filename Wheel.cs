@@ -802,6 +802,9 @@ public partial class Wheel : MonoBehaviour
             var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
             _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(keys, k => Keys.Label(k.Value)) : null);
             bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
+            // While assigning, the letters say which slot a press picks.
+            string labels = Plugin.ButtonLabels.Value;
+            _hud.ShowLetters(_assigning || labels == "Always" || (labels == "WhileHeld" && held));
             // Using the wheel always shows it, like the Tarot menu does.
             float fade = Plugin.FollowGameHud.Value && !inMenu && !held && !weapons ? GameHud.Alpha() : 1f;
             if (weapons)

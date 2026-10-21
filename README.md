@@ -19,7 +19,7 @@ Your normal spell button still casts your equipped spell, as before, and LB on i
   - A card you can't afford right now is grayed out.
   - Your Y spell has a bright gold frame with the game's four gold "equipped" spikes, and Mirror Walk gets a blue rim while its mirror is out.
   - Holding RB enlarges the wheel and shows the mana costs.
-  - Labels follow the device you last used (Y X B A or 1 2 3 4).
+  - Labels follow the device you last used (Y X B A or 1 2 3 4). *Button labels* can hide them, or show them only while you hold the wheel button.
   - Fades out together with the game's own HUD, for example when the HUD Auto Hide mod hides it. Holding RB always shows it.
 - **Weapon wheel.** Hold RB, then LB, and press a face button to switch to that slot's weapon. The weapon stays equipped, as if you had picked it in the Equipment menu, and you keep attacking with X.
   - Nothing changes until you put a weapon on the wheel: in the **Equipment** menu, highlight a weapon, click **L3** (keyboard **F**), then press the slot's button (keyboard **5–8**).
@@ -53,6 +53,7 @@ You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the f
 | Weapon key for slot Y / X / B / A | 5 / 6 / 7 / 8 | Same choices as the spell keys |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
+| Button labels | Always | When each card shows its button (Y/X/B/A, or its key after using the keyboard): always, while holding the wheel button, or never. Always shown while putting a card or weapon on the wheel. |
 | Fade with game HUD | On | Fades the cards out while the game's HUD (health and mana) is hidden, for example by HUD Auto Hide. Holding the wheel button or the Tarot menu always shows them. |
 | Wheel opacity | 100% | 20–100% |
 | Wheel size | 1.00x | 0.5–2x |
@@ -107,6 +108,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.4.1**: *Button labels* setting: show the Y/X/B/A (or key) labels on the cards always, only while holding the wheel button, or never. They always show while putting a card or weapon on the wheel.
 - **1.4.0**: native look: the wheel uses the game's own slot art (the gold diamond frames of the Equipment and Tarot menus), the four gold spikes on the equipped card, a blue rim on a card that stays out or a weapon switch that waits, grayed-out frames for cards you can't afford, and weapon icons upright as in the Armoury. Falls back to the plain tiles if the art isn't found.
 - **1.3.0**: weapon wheel: hold RB, then LB, and press Y/X/B/A (keyboard 5–8) to switch between 4 weapons; assign them in the Equipment menu with L3.
 - **1.2.0**: *Fade with game HUD* (on by default): the wheel fades out while the game's HUD is hidden, for example by HUD Auto Hide, and holding the wheel button always shows it.
