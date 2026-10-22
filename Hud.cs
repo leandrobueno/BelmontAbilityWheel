@@ -18,6 +18,7 @@ internal sealed class Hud
     private const float Border = 3f;
     private static readonly float Tip = Tile / Mathf.Sqrt(2f) - 12f;   // letter and cost, from the center
     private const float SpikeDrop = 16f;   // the gold card's cost, moved down off its top spike
+    private const float ClusterGap = 40f;  // between the spell and weapon wheels, side by side
 
     private const float FadeOutSeconds = 0.3f;   // from solid to hidden, when the game HUD fades
 
@@ -56,7 +57,10 @@ internal sealed class Hud
     private readonly GameObject _canvas;
     private readonly RectTransform _panel;
     private readonly CanvasGroup _group;
-    private readonly Slot[] _slots = new Slot[4];
+    // 0-3: the wheel shown alone (spells or weapons); 4-7: the weapon wheel left of it when merged.
+    private readonly Slot[] _slots = new Slot[8];
+    private readonly RectTransform _second;
+    private bool _merged;
     private readonly TextMeshProUGUI _hint;
     private string _hintText = "";
     private readonly Dictionary<string, Sprite> _icons = new();
@@ -65,7 +69,7 @@ internal sealed class Hud
     private (float, float, float) _layout = (-1f, 0f, 0f);
     private float _fade = 1f;
     private float _alpha = -1f;
-    private string _letters = "";
+    private readonly string[] _letters = { "", "" };
     private bool _lettersShown = true;
 
     // False once Unity has destroyed the canvas, so Wheel builds a new one.
@@ -92,8 +96,11 @@ internal sealed class Hud
         Vector2[] centers = { new(0f, d), new(-d, 0f), new(d, 0f), new(0f, -d) };
 
         var font = Ui.FindFont();
+        var first = Ui.NewRect("Wheel", _panel, Vector2.zero, _panel.sizeDelta);
+        _second = Ui.NewRect("WeaponWheel", _panel, new Vector2(-2f * half - ClusterGap, 0f), _panel.sizeDelta);
+        _second.gameObject.SetActive(false);
         for (int slot = 0; slot < _slots.Length; slot++)
-            _slots[slot] = NewSlot(slot, centers[slot], font);
+            _slots[slot] = NewSlot(slot % 4, slot < 4 ? first : _second, centers[slot % 4], font);
 
         // In the Spells menu's bottom bar, left of the game's own "Back" prompt.
         _hint = Ui.NewText("Hint", _panel, new Vector2(-430f, -half - 24f), new Vector2(760f, 34f), font, 26f, Ui.TextColor);
@@ -112,18 +119,27 @@ internal sealed class Hud
         _hint.gameObject.SetActive(text.Length > 0);
     }
 
-    // null: the gamepad letters.
-    internal void SetLetters(string[] keys)
+    // Each slot's button or key, for the wheel shown alone (cluster 0) or the merged weapon wheel (1).
+    internal void SetLetters(int cluster, string[] labels, Color[] colors)
     {
-        string joined = keys == null ? "" : string.Join("|", keys);
-        if (joined == _letters)
+        string joined = cluster + ":" + string.Join("|", labels);
+        if (joined == _letters[cluster])
             return;
-        _letters = joined;
-        for (int slot = 0; slot < _slots.Length; slot++)
+        _letters[cluster] = joined;
+        for (int i = 0; i < 4; i++)
         {
-            _slots[slot].Letter.text = keys == null ? Wheel.SlotLabels[slot] : keys[slot];
-            _slots[slot].Letter.color = keys == null ? LetterColors[slot] : Ui.TextColor;
+            _slots[cluster * 4 + i].Letter.text = labels[i];
+            _slots[cluster * 4 + i].Letter.color = colors[i];
         }
+    }
+
+    // Both wheels side by side: the weapon wheel (cluster 1) left of the spell wheel.
+    internal void SetMerged(bool merged)
+    {
+        if (merged == _merged)
+            return;
+        _merged = merged;
+        _second.gameObject.SetActive(merged);
     }
 
     internal void ShowLetters(bool show)
@@ -145,9 +161,8 @@ internal sealed class Hud
 
     // fade: how visible the game's HUD is (1 = fully). The tiles follow it down over at least
     // FadeOutSeconds, so letting go of the modifier doesn't make them vanish at once, and come
-    // back at once. costs is null for weapons, which cost nothing.
-    internal void Refresh(ItemData[] cards, int[] costs, float mana, ItemData gold, ItemData active, bool held,
-        float fade)
+    // back at once.
+    internal void Frame(bool held, float fade)
     {
         // Set only on changes: touching the layout every frame makes Unity rebuild the UI.
         var layout = (Plugin.HudScale.Value * (held ? 1.08f : 1f), Plugin.HudOffsetX.Value, Plugin.HudOffsetY.Value);
@@ -166,10 +181,16 @@ internal sealed class Hud
             _alpha = alpha;
             _group.alpha = alpha;
         }
+    }
 
-        for (int i = 0; i < _slots.Length; i++)
+    // One wheel's 4 tiles: cluster 0 is the wheel shown alone, 1 the merged weapon wheel. costs is
+    // null for weapons, which cost nothing.
+    internal void Refresh(int cluster, ItemData[] cards, int[] costs, float mana, ItemData gold, ItemData active,
+        bool held)
+    {
+        for (int i = 0; i < 4; i++)
         {
-            var slot = _slots[i];
+            var slot = _slots[cluster * 4 + i];
             var card = cards[i];
             if (!Cards.Same(card, slot.Card) && !(card == null && slot.Card == null))
             {
@@ -293,9 +314,9 @@ internal sealed class Hud
         slot.Backdrop.gameObject.SetActive(blur);
     }
 
-    private Slot NewSlot(int index, Vector2 center, TMP_FontAsset font)
+    private Slot NewSlot(int index, RectTransform parent, Vector2 center, TMP_FontAsset font)
     {
-        var root = Ui.NewRect(Wheel.SlotLabels[index], _panel, center, new Vector2(Tile, Tile));
+        var root = Ui.NewRect("Slot" + (index + 1), parent, center, new Vector2(Tile, Tile));
         var slot = new Slot();
 
         if (Art.Native)
@@ -311,7 +332,7 @@ internal sealed class Hud
         slot.Name = Ui.NewText("Name", root, Vector2.zero, new Vector2(Tile * 0.7f, Tile * 0.7f), font, 15f, Color.white);
         slot.Name.enableWordWrapping = true;
 
-        slot.Letter = Ui.NewText("Letter", root, new Vector2(0f, -Tip), new Vector2(40f, 30f), font, 24f, LetterColors[index]);
+        slot.Letter = Ui.NewText("Letter", root, new Vector2(0f, -Tip), new Vector2(90f, 30f), font, 24f, LetterColors[index]);
         slot.Letter.text = Wheel.SlotLabels[index];
         slot.Letter.fontStyle = FontStyles.Bold;
         slot.Cost = Ui.NewText("Cost", root, new Vector2(0f, Tip), new Vector2(60f, 26f), font, 20f, Color.white);

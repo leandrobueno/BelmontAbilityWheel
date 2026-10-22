@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BepInEx.Configuration;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.Attributes;
 using MotherBase.ActionFramework;
@@ -27,7 +28,6 @@ public partial class Wheel : MonoBehaviour
     internal static Wheel Instance;
 
     internal static readonly string[] SlotLabels = { "Y", "X", "B", "A" };
-    private static readonly string[] FaceButtons = { "buttonNorth", "buttonWest", "buttonEast", "buttonSouth" };
 
     // A cast refused because Rose is busy is retried this long, as the game buffers a press.
     private const float RetrySeconds = 0.25f;
@@ -104,6 +104,7 @@ public partial class Wheel : MonoBehaviour
             UpdateAssign();
             TrackModifier();
             TrackPage();
+            PollPadSlots();
             if (_pendingWeaponSlot < 0)
                 PollWeaponKeys();
             if (_pendingWeaponSlot >= 0)
@@ -205,25 +206,13 @@ public partial class Wheel : MonoBehaviour
                 return false;
             }
 
-            int slot = Array.IndexOf(FaceButtons, control.name);
+            // A slot button while its wheel is held belongs to the wheel; PollPadSlots acts on it.
             bool spellHeld = modifier.isPressed;
-            if (slot >= 0 && sameDevice && (spellHeld || (weaponButton != null && weaponButton.isPressed)))
+            bool weaponsHeld = Merged ? spellHeld : _pageOpen || (weaponButton != null && weaponButton.isPressed);
+            if (sameDevice && ((spellHeld && IsSlotButton(control, Plugin.SlotButtons)) ||
+                    (weaponsHeld && IsSlotButton(control, Plugin.WeaponSlotButtons))))
             {
                 _swallowed.Add(name);
-                if (ctx.phase == InputActionPhase.Performed)
-                {
-                    // Counts for both buttons, so neither replays its tap action.
-                    _lastWheelPressFrame = Time.frameCount;
-                    if (FaceToWeapons(weaponButton, spellHeld))
-                    {
-                        _pendingWeaponSlot = slot;
-                    }
-                    else
-                    {
-                        _pendingSlot = slot;
-                        _pendingControl = control.TryCast<ButtonControl>();
-                    }
-                }
                 return false;
             }
         }
@@ -490,25 +479,103 @@ public partial class Wheel : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private static ButtonControl ModifierButton() => PadButton(Plugin.Modifier.Value);
+    private static ButtonControl ModifierButton() =>
+        PadButton(Plugin.Modifier.Value) ?? Gamepad.current?.rightShoulder;
 
+    // A config value (an Input System control path on a gamepad) to the current pad's button.
     [HideFromIl2Cpp]
-    private static ButtonControl PadButton(string name)
+    internal static ButtonControl PadButton(string name)
     {
         var pad = Gamepad.current;
         if (pad == null)
             return null;
         return name switch
         {
+            "buttonNorth" => pad.buttonNorth,
+            "buttonWest" => pad.buttonWest,
+            "buttonEast" => pad.buttonEast,
+            "buttonSouth" => pad.buttonSouth,
+            "dpad/up" => pad.dpad.up,
+            "dpad/left" => pad.dpad.left,
+            "dpad/right" => pad.dpad.right,
+            "dpad/down" => pad.dpad.down,
             "leftShoulder" => pad.leftShoulder,
-            "rightTrigger" => pad.rightTrigger,
+            "rightShoulder" => pad.rightShoulder,
             "leftTrigger" => pad.leftTrigger,
+            "rightTrigger" => pad.rightTrigger,
             "leftStickPress" => pad.leftStickButton,
             "rightStickPress" => pad.rightStickButton,
             "select" => pad.selectButton,
-            _ => pad.rightShoulder,
+            "start" => pad.startButton,
+            _ => null,
         };
     }
+
+    [HideFromIl2Cpp]
+    private static bool IsSlotButton(InputControl control, ConfigEntry<string>[] slots)
+    {
+        foreach (var entry in slots)
+        {
+            var button = PadButton(entry.Value);
+            if (button != null && button.Pointer == control.Pointer)
+                return true;
+        }
+        return false;
+    }
+
+    // Both wheels at once on the wheel button, each slot on its own button (Bindings checks that).
+    [HideFromIl2Cpp]
+    private static bool Merged => Plugin.MergedWheels.Value && Plugin.WeaponPage.Value;
+
+    // A slot button pressed while its wheel is held: Y/X/B/A by default, the D-pad for the merged
+    // weapon wheel. Polled rather than taken from the game's input, which never sees the D-pad as
+    // a button (it's Move).
+    [HideFromIl2Cpp]
+    private void PollPadSlots()
+    {
+        if (MenuOpen || !GameplayInputActive())
+            return;
+        bool merged = Merged;
+        bool spells = _modifierDown && (merged || !_pageOpen);
+        bool weapons = merged ? _modifierDown : _pageOpen;
+        for (int slot = 0; slot < SlotLabels.Length; slot++)
+        {
+            if (spells && PadButton(Plugin.SlotButtons[slot].Value) is { wasPressedThisFrame: true } button)
+            {
+                _pendingSlot = slot;
+                _pendingControl = button;
+                _lastWheelPressFrame = Time.frameCount;   // the wheel button won't replay its tap action
+                return;
+            }
+            if (weapons && PadButton(Plugin.WeaponSlotButtons[slot].Value) is { wasPressedThisFrame: true })
+            {
+                _pendingWeaponSlot = slot;
+                _lastWheelPressFrame = Time.frameCount;
+                return;
+            }
+        }
+    }
+
+    // Patches.cs Move filter: false drops a D-pad press while a held wheel has a slot on it, so Rose
+    // doesn't walk while a slot is picked. Releases always go through, so she never keeps walking.
+    [HideFromIl2Cpp]
+    internal bool LetMoveThrough(GamePlayerInput input, InputAction.CallbackContext ctx)
+    {
+        if (_input == null || input == null || input.Pointer != _input.Pointer || ctx.phase == InputActionPhase.Canceled)
+            return true;
+        // The game binds the whole D-pad as one Vector2 control; a single direction's parent is "dpad".
+        var control = ctx.control;
+        if (control == null || (control.name != "dpad" && control.parent?.name != "dpad"))
+            return true;
+        bool merged = Merged;
+        bool spells = _modifierDown && (merged || !_pageOpen);
+        bool weapons = merged ? _modifierDown : _pageOpen;
+        return !((spells && UsesDpad(Plugin.SlotButtons)) || (weapons && UsesDpad(Plugin.WeaponSlotButtons)));
+    }
+
+    [HideFromIl2Cpp]
+    private static bool UsesDpad(ConfigEntry<string>[] slots) =>
+        Array.Exists(slots, s => s.Value.StartsWith("dpad/", StringComparison.Ordinal));
 
     [HideFromIl2Cpp]
     private void TrackModifier()
@@ -818,26 +885,32 @@ public partial class Wheel : MonoBehaviour
                 return;
 
             _hud.SetHint(inMenu ? MenuHint() : "");
-            var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
-            _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(keys, k => Keys.Label(k.Value)) : null);
+            // Merged, gameplay shows both wheels; the menus show the one being assigned.
+            bool merged = Merged && !inMenu;
+            _hud.SetMerged(merged);
+            SetLetters(0, weapons && !merged);
+            if (merged)
+                SetLetters(1, true);
             bool held = _assigning || (!inMenu && (_modifierDown || _weaponDown));   // RB switches tabs in menus
             // While assigning, the letters say which slot a press picks.
             string labels = Plugin.ButtonLabels.Value;
             _hud.ShowLetters(_assigning || labels == "Always" || (labels == "WhileHeld" && held));
             // Using the wheel always shows it, like the Tarot menu does.
             float fade = Plugin.FollowGameHud.Value && !inMenu && !held && !weapons ? GameHud.Alpha() : 1f;
-            if (weapons)
+            _hud.Frame(held, fade);
+            if (merged)
             {
-                // Gold: the equipped weapon. Blue: a switch waiting for the current attack to end.
-                _hud.Refresh(_slotWeapons, null, 0f, Inventory?.GetEquippedWeapon(), _waitingWeapon, held, fade);
-                return;
+                ShowSpells(0, held);
+                ShowWeapons(1, held);
             }
-
-            float mana = Mana();
-            var gold = Plugin.KeepHomeCard.Value && _home != null ? _home : Inventory?.GetEquippedSpell();
-            for (int slot = 0; slot < _slotSpells.Length; slot++)
-                _slotCosts[slot] = _slotSpells[slot] == null ? 0 : Cost(_slotSpells[slot]);
-            _hud.Refresh(_slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held, fade);
+            else if (weapons)
+            {
+                ShowWeapons(0, held);
+            }
+            else
+            {
+                ShowSpells(0, held);
+            }
         }
         catch (Exception e)
         {
@@ -845,6 +918,37 @@ public partial class Wheel : MonoBehaviour
             Plugin.Logger.LogError($"[hud] failed, HUD turned off: {e}");
             try { _hud?.SetVisible(false); } catch { }
         }
+    }
+
+    [HideFromIl2Cpp]
+    private void ShowSpells(int cluster, bool held)
+    {
+        float mana = Mana();
+        var gold = Plugin.KeepHomeCard.Value && _home != null ? _home : Inventory?.GetEquippedSpell();
+        for (int slot = 0; slot < _slotSpells.Length; slot++)
+            _slotCosts[slot] = _slotSpells[slot] == null ? 0 : Cost(_slotSpells[slot]);
+        _hud.Refresh(cluster, _slotSpells, _slotCosts, mana, gold, _loanSticky ? _onLoan : null, held);
+    }
+
+    // Gold: the equipped weapon. Blue: a switch waiting for the current attack to end.
+    [HideFromIl2Cpp]
+    private void ShowWeapons(int cluster, bool held) =>
+        _hud.Refresh(cluster, _slotWeapons, null, 0f, Inventory?.GetEquippedWeapon(), _waitingWeapon, held);
+
+    // The slots' keys after the keyboard was used, the game's icons of their gamepad buttons otherwise.
+    [HideFromIl2Cpp]
+    private void SetLetters(int cluster, bool weapons)
+    {
+        var labels = new string[SlotLabels.Length];
+        var colors = new Color[SlotLabels.Length];
+        var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
+        var buttons = weapons ? Plugin.WeaponSlotButtons : Plugin.SlotButtons;
+        for (int slot = 0; slot < labels.Length; slot++)
+        {
+            labels[slot] = Keys.KeyboardMode ? Keys.Label(keys[slot].Value) : Glyphs.Tag(buttons[slot].Value);
+            colors[slot] = Keys.KeyboardMode ? Ui.TextColor : Color.white;
+        }
+        _hud.SetLetters(cluster, labels, colors);
     }
 
     [HideFromIl2Cpp]

@@ -14,13 +14,14 @@ namespace AbilityWheel;
 public partial class Wheel
 {
     // From the game's Player_InputBindings: face buttons, Esc, tabs (Q/E, LB/RB) and sub-tabs
-    // (1/3, LT/RT), which double as keyboard slot keys.
+    // (1/3, LT/RT), which double as keyboard slot keys, and navigation, for slots on the D-pad.
     internal static readonly (string Map, string Action)[] BlockedWhileAssigning =
     {
         ("UI", "Validate"), ("UI", "Close"), ("UI", "GameMenuClose"), ("UI", "MenuContextualValidate"),
         ("UI", "MenuContextualCancel"), ("UI", "MenuContextualReset"), ("UI", "Map_PlaceMarker"),
         ("UI", "Map_Interact"), ("UI", "Map_UpperMap"), ("UI", "PreviousTab"), ("UI", "NextTab"),
         ("UI", "PreviousSubTab"), ("UI", "NextSubTab"), ("UI", "OpenInventory"), ("Menu", "OpenInventory"),
+        ("UI", "Navigate"), ("UI", "NavigateUp"), ("UI", "NavigateDown"), ("UI", "NavigateLeft"), ("UI", "NavigateRight"),
     };
 
     private InventorySpellMenuManager _spellsMenu;
@@ -88,10 +89,12 @@ public partial class Wheel
         }
 
         // Slot keys first: the assign key may also be a slot key.
-        var slotKeys = _assignSlots == Plugin.WeaponSlots ? Plugin.WeaponKeys : Plugin.SlotKeys;
+        bool weapons = _assignSlots == Plugin.WeaponSlots;
+        var slotKeys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
+        var slotButtons = weapons ? Plugin.WeaponSlotButtons : Plugin.SlotButtons;
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
-            if ((pad != null && FaceButton(pad, slot).wasPressedThisFrame) || Keys.Pressed(slotKeys[slot].Value))
+            if ((PadButton(slotButtons[slot].Value)?.wasPressedThisFrame ?? false) || Keys.Pressed(slotKeys[slot].Value))
             {
                 Assign(slot);
                 return;
@@ -119,7 +122,7 @@ public partial class Wheel
         _assigning = true;
         _assignCard = card;
         _assignSlots = slots;
-        Plugin.Logger.LogInfo($"[assign] {card.itemID}: waiting for Y/X/B/A");
+        Plugin.Logger.LogInfo($"[assign] {card.itemID}: waiting for a slot button");
     }
 
     [HideFromIl2Cpp]
@@ -219,31 +222,26 @@ public partial class Wheel
         bool keyboard = Keys.KeyboardMode;
         if (_assigning)
         {
-            var keys = _assignSlots == Plugin.WeaponSlots ? Plugin.WeaponKeys : Plugin.SlotKeys;
+            bool weapons = _assignSlots == Plugin.WeaponSlots;
+            var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
+            var buttons = weapons ? Plugin.WeaponSlotButtons : Plugin.SlotButtons;
             string slots = keyboard
                 ? string.Join(" ", Array.ConvertAll(keys, k => Keys.Label(k.Value)))
-                : "Y X B A";
-            return $"{Texts.Get(Texts.ChooseSlot)}  {slots}      {Texts.Get(Texts.Cancel)}  {(keyboard ? "Esc" : "L3")}";
+                : string.Join(" ", Array.ConvertAll(buttons, b => Glyphs.Tag(b.Value)));
+            return $"{Texts.Get(Texts.ChooseSlot)}  {slots}      {Texts.Get(Texts.Cancel)}  {(keyboard ? "Esc" : Glyphs.Tag("leftStickPress"))}";
         }
         return Highlighted == null ? "" :
-            $"{Texts.Get(Texts.AddToWheel)}  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
+            $"{Texts.Get(Texts.AddToWheel)}  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : Glyphs.Tag("leftStickPress"))}";
     }
-
-    [HideFromIl2Cpp]
-    private static ButtonControl FaceButton(Gamepad pad, int slot) => slot switch
-    {
-        0 => pad.buttonNorth,
-        1 => pad.buttonWest,
-        2 => pad.buttonEast,
-        _ => pad.buttonSouth,
-    };
 
     [HideFromIl2Cpp]
     private static bool AnyAssignInputHeld(Gamepad pad)
     {
         for (int slot = 0; slot < SlotLabels.Length; slot++)
         {
-            if ((pad != null && FaceButton(pad, slot).isPressed) || Keys.Held(Plugin.SlotKeys[slot].Value) ||
+            if ((PadButton(Plugin.SlotButtons[slot].Value)?.isPressed ?? false) ||
+                (PadButton(Plugin.WeaponSlotButtons[slot].Value)?.isPressed ?? false) ||
+                Keys.Held(Plugin.SlotKeys[slot].Value) ||
                 Keys.Held(Plugin.WeaponKeys[slot].Value))
                 return true;
         }

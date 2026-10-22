@@ -51,14 +51,15 @@ public partial class Wheel
     [HideFromIl2Cpp]
     private bool HasWeapons => Plugin.WeaponPage.Value && !Array.TrueForAll(_slotWeapons, w => w == null);
 
-    // Default mode: LB, while the weapon page is on, has a weapon to offer and isn't the wheel
-    // button itself.
+    // A combination (default: the wheel button, then LB): its second button, while the weapon page
+    // is on, has a weapon to offer and isn't the wheel button itself.
     [HideFromIl2Cpp]
     private ButtonControl PageButton()
     {
-        if (Plugin.WeaponButton.Value != Plugin.WheelThenLB || Plugin.Modifier.Value == "leftShoulder" || !HasWeapons)
+        var (held, pressed) = Bindings.WeaponCombo();
+        if (Merged || held == null || held != Plugin.Modifier.Value || pressed == Plugin.Modifier.Value || !HasWeapons)
             return null;
-        return Gamepad.current?.leftShoulder;
+        return PadButton(pressed);
     }
 
     // The weapon page's own button, if it has one and a weapon to offer. Until a weapon slot is
@@ -66,8 +67,8 @@ public partial class Wheel
     [HideFromIl2Cpp]
     private ButtonControl WeaponButton()
     {
-        string name = Plugin.WeaponButton.Value;
-        if (name == Plugin.WheelThenLB || !HasWeapons)
+        var (held, name) = Bindings.WeaponCombo();
+        if (Merged || held != null || !HasWeapons)
             return null;
         if (name == Plugin.Modifier.Value)
         {
@@ -101,10 +102,15 @@ public partial class Wheel
             else
             {
                 // LB's own action is the hold-to-drink potion, which a tap can't do.
-                EndHold(_weaponHeldBack, _weaponDownAt, _weaponDownFrame, Plugin.WeaponButton.Value != "leftShoulder");
+                EndHold(_weaponHeldBack, _weaponDownAt, _weaponDownFrame, Bindings.WeaponCombo().Pressed != "leftShoulder");
             }
         }
-        if (Plugin.WeaponButton.Value != Plugin.WheelThenLB)
+        if (Merged)
+        {
+            _pageOpen = false;
+            return;
+        }
+        if (Bindings.WeaponCombo().Held == null)
         {
             bool open = _weaponDown && (!_modifierDown || _weaponDownFrame > _modifierDownFrame);
             if (open != _pageOpen)
@@ -121,22 +127,6 @@ public partial class Wheel
             _pageOpen = false;
             Plugin.Logger.LogDebug("[weapon] page closed");
         }
-    }
-
-    // Where a face press goes while the wheel button, the weapon button or both are held: with
-    // both, to the one pressed last. A button Update hasn't seen down yet was pressed this frame.
-    [HideFromIl2Cpp]
-    private bool FaceToWeapons(ButtonControl weaponButton, bool spellHeld)
-    {
-        if (weaponButton == null)
-            return _pageOpen;
-        if (!weaponButton.isPressed)
-            return false;
-        if (!spellHeld)
-            return true;
-        int weaponAt = _weaponDown ? _weaponDownFrame : int.MaxValue;
-        int spellAt = _modifierDown ? _modifierDownFrame : int.MaxValue;
-        return weaponAt > spellAt;
     }
 
     [HideFromIl2Cpp]

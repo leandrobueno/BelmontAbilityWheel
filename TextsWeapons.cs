@@ -12,21 +12,6 @@ internal static partial class Texts
         ["ko"] = "무기 바퀴", ["zh-CN"] = "武器轮盘", ["zh-TW"] = "武器輪盤",
     };
 
-    internal static readonly T WeaponWheelHint = new()
-    {
-        ["en"] = "Hold the weapon button and press Y/X/B/A to switch to that slot's weapon; it stays equipped. In the Equipment menu, highlight a weapon and click L3 to put it on the wheel.",
-        ["fr"] = "Maintenez le bouton d'armes et appuyez sur Y/X/B/A pour prendre l'arme de cet emplacement ; elle reste équipée. Dans le menu Équipement, sélectionnez une arme et cliquez sur L3 pour la placer sur la roue.",
-        ["de"] = "Halte die Waffentaste und drücke Y/X/B/A, um zur Waffe dieses Platzes zu wechseln; sie bleibt ausgerüstet. Wähle im Menü Ausrüstung eine Waffe und klicke L3, um sie aufs Rad zu legen.",
-        ["es"] = "Mantén el botón de armas y pulsa Y/X/B/A para cambiar al arma de esa casilla; se queda equipada. En el menú Equipamiento, selecciona un arma y pulsa L3 para ponerla en la rueda.",
-        ["it"] = "Tieni premuto il tasto armi e premi Y/X/B/A per passare all'arma di quello slot; resta equipaggiata. Nel menu Equipaggiamento, seleziona un'arma e premi L3 per metterla sulla ruota.",
-        ["pt-BR"] = "Segure o botão de armas e aperte Y/X/B/A para trocar para a arma desse espaço; ela continua equipada. No menu Equipamento, selecione uma arma e aperte L3 para colocá-la na roda.",
-        ["ru"] = "Удерживайте кнопку оружия и нажмите Y/X/B/A, чтобы взять оружие этой ячейки; оно останется выбранным. В меню Инвентарь выберите оружие и нажмите L3, чтобы поместить его на колесо.",
-        ["ja"] = "武器ボタンを押しながらY/X/B/Aでそのスロットの武器に切り替えます。武器は装備されたままです。装備メニューで武器を選んでL3を押すとホイールに入ります。",
-        ["ko"] = "무기 버튼을 누른 채 Y/X/B/A를 누르면 해당 슬롯의 무기로 전환합니다. 무기는 장착된 채로 남습니다. 장비 메뉴에서 무기를 고르고 L3를 누르면 바퀴에 넣습니다.",
-        ["zh-CN"] = "按住武器键,然后按 Y/X/B/A 切换为该位置的武器,武器会保持装备。在装备菜单中选中武器并按 L3 放入轮盘。",
-        ["zh-TW"] = "按住武器鍵，然後按 Y/X/B/A 切換為該位置的武器，武器會保持裝備。在裝備選單中選中武器並按 L3 放入輪盤。",
-    };
-
     internal static readonly T WeaponButton = new()
     {
         ["en"] = "Weapon button (gamepad)", ["fr"] = "Bouton d'armes (manette)", ["de"] = "Waffentaste (Controller)",
@@ -56,16 +41,6 @@ internal static partial class Texts
         ["es"] = "Botón de la rueda + LB", ["it"] = "Tasto della ruota + LB", ["pt-BR"] = "Botão da roda + LB",
         ["ru"] = "Кнопка колеса + LB", ["ja"] = "ホイールボタン + LB", ["ko"] = "바퀴 버튼 + LB",
         ["zh-CN"] = "轮盘键 + LB", ["zh-TW"] = "輪盤鍵 + LB",
-    };
-
-    // {0}: the slot's button, Y/X/B/A.
-    internal static readonly T WeaponKey = new()
-    {
-        ["en"] = "Weapon key for slot {0}", ["fr"] = "Touche d'arme de l'emplacement {0}",
-        ["de"] = "Tastaturtaste für Waffe {0}", ["es"] = "Tecla de arma para la casilla {0}",
-        ["it"] = "Tasto arma dello slot {0}", ["pt-BR"] = "Tecla de arma do espaço {0}",
-        ["ru"] = "Клавиша оружия для ячейки {0}", ["ja"] = "スロット{0}の武器キー", ["ko"] = "{0} 슬롯 무기 키",
-        ["zh-CN"] = "{0} 的武器按键", ["zh-TW"] = "{0} 的武器按鍵",
     };
 
     internal static readonly T WeaponKeyHint = new()

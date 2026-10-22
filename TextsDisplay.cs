@@ -20,21 +20,6 @@ internal static partial class Texts
         ["zh-TW"] = "按鍵標示",
     };
 
-    internal static readonly T ButtonLabelsHint = new()
-    {
-        ["en"] = "When each card shows its button (Y/X/B/A, or its key after using the keyboard). Always shown while putting a card or weapon on the wheel.",
-        ["fr"] = "Quand chaque carte affiche son bouton (Y/X/B/A, ou sa touche après usage du clavier). Toujours affiché quand vous placez une carte ou une arme sur la roue.",
-        ["de"] = "Wann jede Karte ihre Taste zeigt (Y/X/B/A oder nach Tastaturnutzung ihre Taste). Beim Platzieren einer Karte oder Waffe auf dem Rad immer sichtbar.",
-        ["es"] = "Cuándo muestra cada carta su botón (Y/X/B/A, o su tecla tras usar el teclado). Siempre visible al poner una carta o un arma en la rueda.",
-        ["it"] = "Quando ogni carta mostra il suo tasto (Y/X/B/A, o il suo tasto della tastiera dopo averla usata). Sempre visibile quando metti una carta o un'arma sulla ruota.",
-        ["pt-BR"] = "Quando cada carta mostra seu botão (Y/X/B/A, ou sua tecla após usar o teclado). Sempre visível ao colocar uma carta ou arma na roda.",
-        ["ru"] = "Когда карты показывают свои кнопки (Y/X/B/A или клавиши после использования клавиатуры). Всегда видны, когда вы назначаете карту или оружие на колесо.",
-        ["ja"] = "各カードにボタン（Y/X/B/A、キーボード使用後はキー）を表示するタイミング。カードや武器をホイールに入れる間は常に表示されます。",
-        ["ko"] = "각 카드에 버튼(Y/X/B/A, 키보드 사용 후에는 키)을 표시하는 시점입니다. 카드나 무기를 바퀴에 넣는 동안에는 항상 표시됩니다.",
-        ["zh-CN"] = "何时在卡牌上显示对应按键(Y/X/B/A,使用键盘时为键盘按键)。放入轮盘时始终显示。",
-        ["zh-TW"] = "何時在卡牌上顯示對應按鍵（Y/X/B/A，使用鍵盤時為鍵盤按鍵）。放入輪盤時始終顯示。",
-    };
-
     internal static readonly T FadeWithHud = new()
     {
         ["en"] = "Fade with game HUD",
@@ -119,15 +104,6 @@ internal static partial class Texts
         ["es"] = "En píxeles a 1080p.", ["it"] = "In pixel a 1080p.", ["pt-BR"] = "Em pixels a 1080p.",
         ["ru"] = "В пикселях при 1080p.", ["ja"] = "1080p時のピクセル数。", ["ko"] = "1080p 기준 화소입니다.",
         ["zh-CN"] = "以 1080p 像素计。", ["zh-TW"] = "以 1080p 像素計。",
-    };
-
-    // {0}: the slot's button, Y/X/B/A.
-    internal static readonly T SlotKey = new()
-    {
-        ["en"] = "Keyboard key for slot {0}", ["fr"] = "Touche clavier de l'emplacement {0}",
-        ["de"] = "Tastaturtaste für Platz {0}", ["es"] = "Tecla para la casilla {0}", ["it"] = "Tasto tastiera dello slot {0}",
-        ["pt-BR"] = "Tecla do espaço {0}", ["ru"] = "Клавиша для ячейки {0}", ["ja"] = "スロット{0}のキー",
-        ["ko"] = "{0} 슬롯 키보드 키", ["zh-CN"] = "{0} 的键盘按键", ["zh-TW"] = "{0} 的鍵盤按鍵",
     };
 
     internal static readonly T SlotKeyHint = new()

@@ -46,28 +46,6 @@ internal static partial class Texts
         return result;
     }
 
-    internal static readonly T Title = new()
-    {
-        ["en"] = "Ability Wheel",
-        ["zh-CN"] = "技能轮盘",
-        ["zh-TW"] = "技能輪盤",
-    };
-
-    internal static readonly T Summary = new()
-    {
-        ["en"] = "Cast up to 4 Tarot spells: hold the wheel button and press Y/X/B/A. Hold LB too (or a weapon button of your choice) to switch between 4 weapons.",
-        ["fr"] = "Lancez jusqu'à 4 sorts du Tarot : maintenez le bouton de la roue et appuyez sur Y/X/B/A. Maintenez aussi LB (ou un bouton d'armes de votre choix) pour changer parmi 4 armes.",
-        ["de"] = "Wirke bis zu 4 Tarot-Zauber: Halte die Radtaste und drücke Y/X/B/A. Halte zusätzlich LB (oder eine eigene Waffentaste), um zwischen 4 Waffen zu wechseln.",
-        ["es"] = "Lanza hasta 4 hechizos del Tarot: mantén el botón de la rueda y pulsa Y/X/B/A. Mantén también LB (o un botón de armas a tu elección) para cambiar entre 4 armas.",
-        ["it"] = "Lancia fino a 4 incantesimi dei Tarocchi: tieni premuto il tasto della ruota e premi Y/X/B/A. Tieni premuto anche LB (o un tasto armi a tua scelta) per passare tra 4 armi.",
-        ["pt-BR"] = "Lance até 4 feitiços do Tarô: segure o botão da roda e aperte Y/X/B/A. Segure também LB (ou um botão de armas à sua escolha) para trocar entre 4 armas.",
-        ["ru"] = "До 4 заклинаний Таро: удерживайте кнопку колеса и нажмите Y/X/B/A. Удерживайте также LB (или выбранную кнопку оружия), чтобы переключаться между 4 видами оружия.",
-        ["ja"] = "タロットのスペルを最大4つ使えます：ホイールボタンを押しながらY/X/B/Aを押します。さらにLB（または好きな武器ボタン）を押すと4つの武器を切り替えられます。",
-        ["ko"] = "타로 주문을 최대 4개까지 사용합니다: 바퀴 버튼을 누른 채 Y/X/B/A를 누르세요. LB(또는 원하는 무기 버튼)도 누르고 있으면 무기 4개를 전환할 수 있습니다.",
-        ["zh-CN"] = "按住轮盘键并按 Y/X/B/A,快速施放 4 张塔罗牌的法术;再按住 LB(或自选的武器键)可切换 4 把武器。",
-        ["zh-TW"] = "按住輪盤鍵並按 Y/X/B/A，快速使用 4 張塔羅牌的法術，再按住 LB（或自選的武器鍵）可切換 4 把武器。",
-    };
-
     // The HUD's hints in the Tarot and Equipment menus.
     internal static readonly T AddToWheel = new()
     {

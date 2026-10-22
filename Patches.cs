@@ -26,6 +26,24 @@ internal static class FilterActionInput
     }
 }
 
+// Rose's Move (stick and D-pad) arrives here, not through the binding above.
+[HarmonyPatch(typeof(GamePlayerInput), nameof(GamePlayerInput.ProcessMoveInputActionBinding))]
+internal static class FilterMoveInput
+{
+    private static bool Prefix(GamePlayerInput __instance, InputAction.CallbackContext ctx)
+    {
+        try
+        {
+            return Wheel.Instance?.LetMoveThrough(__instance, ctx) ?? true;
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"[input] move filter failed: {e}");
+            return true;
+        }
+    }
+}
+
 // Hold spells ask here whether Spell is still held (Hold.cs).
 [HarmonyPatch(typeof(GamePlayerInput), nameof(GamePlayerInput.GetInputState))]
 internal static class SpellHeldByWheel
