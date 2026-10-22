@@ -43,7 +43,7 @@ Some cards have Blessings or Works of Mercy tasks that only count while the card
 
 With the Belmont UI plugin installed, the settings are in the pause menu: the **MODS** tab after SYSTEM (**MODS SETTINGS** with Belmont UI 0.2), then **Settings** on the **Ability Wheel** row (on the title screen: **Settings** → **Mods Settings**). They look and work like the game's other settings and apply at once; **Restore defaults** at the end of the section (a Reset button) puts them all back. Without that plugin the wheel works the same, and the config file is the only place to change settings.
 
-You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the file apply the next time the game starts. If you use Belmont Minimap, the same settings are also under Pause menu → **MODS** → **Ability Wheel**.
+You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the file apply the next time the game starts.
 
 | Setting | Default | |
 |---|---|---|
@@ -89,12 +89,12 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Compatibility and known limitations
 
-- Works alongside other BepInEx mods, including HDR mods such as RenoDX. With Belmont Minimap 1.1.0 or newer, the settings also show in its MODS tab.
+- Works alongside other BepInEx mods, including HDR mods such as RenoDX and Belmont Minimap. Since 1.5.0 the settings are only in Belmont UI's MODS tab (or the config file), not in Belmont Minimap's MODS tab.
 - With HUD Auto Hide, the wheel fades in and out with the game's HUD (*Fade with game HUD*). No setup is needed in either mod.
 - A tap of the wheel button does its normal action (RB: Interact) when you release it, not when you press it.
 - The game itself removes Mirror Walk's mirror and Wheel of Chaos' wheels when another spell is equipped, so casting another spell ends them.
 - Like the game's own spell button, a cast pressed in the middle of an attack combo may need a second press.
-- The settings page and the wheel's menu hints are in the game's 11 languages with Belmont UI 0.3.0 or newer (English with 0.2.x). The Belmont Minimap page is in English and Simplified Chinese.
+- The settings page and the wheel's menu hints are in the game's 11 languages with Belmont UI 0.3.0 or newer (English with 0.2.x).
 
 ## Troubleshooting
 
@@ -110,7 +110,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
-- **1.5.0**: *Weapon button* setting: the weapon wheel can have a button of its own (for example LB alone) instead of the wheel button then LB. With LB, LB no longer drinks potions, which suits the Blackened Heart relic. Weapon icons are bigger and fill their diamond with a blur of their own colours. With Belmont UI 0.3.0 or newer, the settings page and the wheel's menu hints follow the game's language (all 11).
+- **1.5.0**: *Weapon button* setting: the weapon wheel can have a button of its own (for example LB alone) instead of the wheel button then LB. With LB, LB no longer drinks potions, which suits the Blackened Heart relic. Weapon icons are bigger and fill their diamond with a blur of their own colours. With Belmont UI 0.3.0 or newer, the settings page and the wheel's menu hints follow the game's language (all 11). Settings are no longer added to Belmont Minimap's MODS tab; use Belmont UI's MODS tab or the config file.
 - **1.4.1**: *Button labels* setting: show the Y/X/B/A (or key) labels on the cards always, only while holding the wheel button, or never. They always show while putting a card or weapon on the wheel.
 - **1.4.0**: native look: the wheel uses the game's own slot art (the gold diamond frames of the Equipment and Tarot menus), the four gold spikes on the equipped card, a blue rim on a card that stays out or a weapon switch that waits, grayed-out frames for cards you can't afford, and weapon icons upright as in the Armoury. Falls back to the plain tiles if the art isn't found.
 - **1.3.0**: weapon wheel: hold RB, then LB, and press Y/X/B/A (keyboard 5–8) to switch between 4 weapons; assign them in the Equipment menu with L3.
@@ -122,4 +122,3 @@ MIT, see [LICENSE](LICENSE).
 
 - [BepInEx](https://github.com/BepInEx/BepInEx), with Il2CppInterop and HarmonyX.
 - [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) by KZekai.
-- Belmont Minimap, for the shared MODS tab that other mods can add their settings to.

@@ -43,7 +43,7 @@ internal static class MenuGlue
     // be loaded there.
     private static class Translated
     {
-        // The same rows as the Belmont Minimap page (SettingRows.cs), in the game's language.
+        // The rows of SettingRows.cs, in the game's language.
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Register()
         {

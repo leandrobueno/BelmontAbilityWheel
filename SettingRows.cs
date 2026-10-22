@@ -2,18 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BepInEx.Configuration;
-using UnityEngine;
 using T = System.Collections.Generic.Dictionary<string, string>;
 
 namespace AbilityWheel;
 
-// One setting as the Mods Settings page (Belmont UI) and Belmont Minimap's MODS page show it, with
-// its texts in the game's languages (Texts*.cs). Belmont Minimap shows only English and
-// Simplified Chinese, and drops a row with a character missing from the game's Chinese font.
+// One setting as Belmont UI's settings page shows it, with its texts in the game's languages
+// (Texts*.cs).
 internal sealed class SettingRow
 {
     internal ConfigEntryBase Entry;
-    internal string Kind;   // "bool", "float" or "enum", as the MODS page names them
+    internal string Kind;   // "bool", "float" or "enum"
     internal T Label, Hint;
     internal float Min, Max, Step;
     internal string Format;
@@ -23,11 +21,8 @@ internal sealed class SettingRow
     private string[] _names;
 
     internal string LabelEn => Texts.Resolve(Label, "en");
-    internal string LabelZh => Texts.Resolve(Label, "zh-CN");
     internal string HintEn => Texts.Resolve(Hint, "en");
-    internal string HintZh => Texts.Resolve(Hint, "zh-CN");
     internal string[] ChoicesEn => ChoiceNames("en");
-    internal string[] ChoicesZh => ChoiceNames("zh-CN");
 
     internal string[] ChoiceNames(string locale) =>
         Choices != null ? Array.ConvertAll(Choices, c => Texts.Resolve(c, locale)) : _names;
@@ -36,40 +31,6 @@ internal sealed class SettingRow
     {
         _names = names;
         return this;
-    }
-
-    internal string ValueText()
-    {
-        switch (Kind)
-        {
-            case "bool":
-                return (bool)Entry.BoxedValue ? "On" : "Off";
-            case "float":
-                return string.Format(Format, (float)Entry.BoxedValue);
-            default:
-                int index = Array.IndexOf(Values, (string)Entry.BoxedValue);
-                return index >= 0 ? ChoicesEn[index] : (string)Entry.BoxedValue;
-        }
-    }
-
-    internal void Change(int direction)
-    {
-        switch (Kind)
-        {
-            case "bool":
-                Entry.BoxedValue = !(bool)Entry.BoxedValue;
-                break;
-            case "float":
-                float value = Mathf.Clamp((float)Entry.BoxedValue + direction * Step, Min, Max);
-                // On the step grid and rounded, so the config file doesn't get 0.70000005.
-                value = Min + Mathf.Round((value - Min) / Step) * Step;
-                Entry.BoxedValue = (float)Math.Round(value, 4);
-                break;
-            default:
-                int index = Array.IndexOf(Values, (string)Entry.BoxedValue);
-                Entry.BoxedValue = Values[((index < 0 ? 0 : index) + direction + Values.Length) % Values.Length];
-                break;
-        }
     }
 }
 
@@ -119,13 +80,6 @@ internal static class SettingRows
         }
 
         return rows;
-    }
-
-    internal static void ResetAll()
-    {
-        foreach (var row in All())
-            row.Entry.BoxedValue = row.Entry.DefaultValue;
-        Plugin.Settings.Save();
     }
 
     private static SettingRow Toggle(ConfigEntryBase entry, T label, T hint) =>
