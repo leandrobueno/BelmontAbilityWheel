@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using BepInEx.Unity.IL2CPP;
 
 namespace AbilityWheel;
@@ -24,7 +25,11 @@ internal static class MenuGlue
         }
         try
         {
-            Lib.Register();
+            // Translated texts need Belmont UI 0.3; with 0.2 the page is in English.
+            if (Lib.CanTranslate())
+                Translated.Register();
+            else
+                Lib.RegisterEnglish();
         }
         catch (Exception e)
         {
@@ -33,15 +38,60 @@ internal static class MenuGlue
         }
     }
 
-    private static class Lib
+    // Belmont UI 0.3 and later. A class of its own, lambdas included: Belmont UI 0.2 has no
+    // LocalizedText, and a class that mentions it (even in a lambda's hidden closure class) can't
+    // be loaded there.
+    private static class Translated
     {
-        // The same rows as the Belmont Minimap page (SettingRows.cs), English texts.
+        // The same rows as the Belmont Minimap page (SettingRows.cs), in the game's language.
+        [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Register()
         {
-            BelmontUi.Settings.Register(Plugin.Guid, "Ability Wheel", page =>
+            BelmontUi.Settings.Register(Plugin.Guid, new BelmontUi.LocalizedText(Texts.Title), page =>
             {
-                page.Summary = "Cast up to 4 Tarot spells: hold the wheel button and press Y/X/B/A. " +
-                    "Hold LB too to switch between 4 weapons.";
+                page.LocalizedSummary = new BelmontUi.LocalizedText(Texts.Summary);
+                foreach (var row in SettingRows.All())
+                {
+                    var label = new BelmontUi.LocalizedText(row.Label);
+                    var hint = new BelmontUi.LocalizedText(row.Hint);
+                    switch (row.Kind)
+                    {
+                        case "bool":
+                            page.Toggle(row.Entry, label, hint);
+                            break;
+                        case "float":
+                            page.Slider(row.Entry, label, row.Min, row.Max, row.Step, row.Format, hint);
+                            break;
+                        default:
+                            var choices = row.Choices != null
+                                ? Array.ConvertAll(row.Choices, c => new BelmontUi.LocalizedText(c))
+                                : Array.ConvertAll(row.ChoicesEn, c => new BelmontUi.LocalizedText(c));
+                            page.Choice(row.Entry, label, row.Values, choices, hint);
+                            break;
+                    }
+                }
+                page.ResetButton();   // translated by the library
+            });
+
+            // The HUD's menu hints follow the game's language too.
+            Texts.Language = BelmontUi.Settings.Language;
+            BelmontUi.Settings.LanguageChanged += code => Texts.Language = code;
+        }
+    }
+
+    // Each method is compiled only when called, so without the library none of this runs.
+    private static class Lib
+    {
+        internal static bool CanTranslate() =>
+            typeof(BelmontUi.Settings).Assembly.GetType("BelmontUi.LocalizedText") != null;
+
+        // Belmont UI 0.2: English texts.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static void RegisterEnglish()
+        {
+            BelmontUi.Settings.Register(Plugin.Guid, Texts.Resolve(Texts.Title, "en"), page =>
+            {
+                page.Summary = Texts.Resolve(Texts.Summary, "en");
                 foreach (var row in SettingRows.All())
                 {
                     switch (row.Kind)

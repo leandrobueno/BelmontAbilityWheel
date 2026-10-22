@@ -11,7 +11,9 @@ namespace AbilityWheel;
 // The weapon page: hold the wheel button, then LB, and press Y/X/B/A (keyboard: the weapon keys)
 // to switch weapons. The weapon stays equipped, as if picked in the Equipment menu, and attacks
 // stay on X. LB is the potion, which is hold-to-drink, so it can't be a tap-or-hold button of its
-// own: it only opens the page when pressed while the wheel button is already down.
+// own: by default it only opens the page when pressed while the wheel button is already down.
+// WeaponButton can instead give the page a button of its own, which works like the wheel button
+// (a tap replays its action), except LB, whose tap can't drink: in that mode LB never drinks.
 //
 // Equipping unloads the old weapon's assets and destroys its attachments (Inventory.
 // EquipWeaponFromInventory -> UnequipWeaponInternal -> ItemData.UnloadRefs, ActiveItemData.
@@ -39,22 +41,78 @@ public partial class Wheel
     private float _showWeaponsUntil;
     private ActionInputState _attackState;
 
-    // LB, while the weapon page is on, has a weapon to offer and isn't the wheel button itself.
+    // A weapon button of its own (WeaponButton other than the wheel button then LB).
+    private bool _weaponDown;
+    private float _weaponDownAt;
+    private int _weaponDownFrame;
+    private readonly List<string> _weaponHeldBack = new();
+    private bool _warnedSameButton;
+
+    [HideFromIl2Cpp]
+    private bool HasWeapons => Plugin.WeaponPage.Value && !Array.TrueForAll(_slotWeapons, w => w == null);
+
+    // Default mode: LB, while the weapon page is on, has a weapon to offer and isn't the wheel
+    // button itself.
     [HideFromIl2Cpp]
     private ButtonControl PageButton()
     {
-        if (!Plugin.WeaponPage.Value || Plugin.Modifier.Value == "leftShoulder")
-            return null;
-        if (Array.TrueForAll(_slotWeapons, w => w == null))
+        if (Plugin.WeaponButton.Value != Plugin.WheelThenLB || Plugin.Modifier.Value == "leftShoulder" || !HasWeapons)
             return null;
         return Gamepad.current?.leftShoulder;
     }
 
-    // The page closes when either button is let go. LB stays held back from the game until it's
-    // released (see LetThrough), so letting go of the wheel button first never drinks a potion.
+    // The weapon page's own button, if it has one and a weapon to offer. Until a weapon slot is
+    // filled the button keeps its normal action, LB included.
+    [HideFromIl2Cpp]
+    private ButtonControl WeaponButton()
+    {
+        string name = Plugin.WeaponButton.Value;
+        if (name == Plugin.WheelThenLB || !HasWeapons)
+            return null;
+        if (name == Plugin.Modifier.Value)
+        {
+            if (!_warnedSameButton)
+                Plugin.Logger.LogWarning($"[weapon] the weapon button is the wheel button ({name}): weapon wheel off");
+            _warnedSameButton = true;
+            return null;
+        }
+        _warnedSameButton = false;
+        return PadButton(name);
+    }
+
+    // Default mode: the page closes when either button is let go. LB stays held back from the
+    // game until it's released (see LetThrough), so letting go of the wheel button first never
+    // drinks a potion. Own button: the page is open while it's held, unless the wheel button was
+    // pressed after it.
     [HideFromIl2Cpp]
     private void TrackPage()
     {
+        var button = WeaponButton();
+        bool down = button != null && button.isPressed;
+        if (down != _weaponDown)
+        {
+            _weaponDown = down;
+            if (down)
+            {
+                _weaponDownAt = Time.unscaledTime;
+                _weaponDownFrame = Time.frameCount;
+                RefreshWeapons();
+            }
+            else
+            {
+                // LB's own action is the hold-to-drink potion, which a tap can't do.
+                EndHold(_weaponHeldBack, _weaponDownAt, _weaponDownFrame, Plugin.WeaponButton.Value != "leftShoulder");
+            }
+        }
+        if (Plugin.WeaponButton.Value != Plugin.WheelThenLB)
+        {
+            bool open = _weaponDown && (!_modifierDown || _weaponDownFrame > _modifierDownFrame);
+            if (open != _pageOpen)
+                Plugin.Logger.LogDebug($"[weapon] page {(open ? "open" : "closed")}");
+            _pageOpen = open;
+            return;
+        }
+
         if (!_pageOpen)
             return;
         var page = PageButton();
@@ -63,6 +121,22 @@ public partial class Wheel
             _pageOpen = false;
             Plugin.Logger.LogDebug("[weapon] page closed");
         }
+    }
+
+    // Where a face press goes while the wheel button, the weapon button or both are held: with
+    // both, to the one pressed last. A button Update hasn't seen down yet was pressed this frame.
+    [HideFromIl2Cpp]
+    private bool FaceToWeapons(ButtonControl weaponButton, bool spellHeld)
+    {
+        if (weaponButton == null)
+            return _pageOpen;
+        if (!weaponButton.isPressed)
+            return false;
+        if (!spellHeld)
+            return true;
+        int weaponAt = _weaponDown ? _weaponDownFrame : int.MaxValue;
+        int spellAt = _modifierDown ? _modifierDownFrame : int.MaxValue;
+        return weaponAt > spellAt;
     }
 
     [HideFromIl2Cpp]
@@ -226,6 +300,8 @@ public partial class Wheel
     private void ForgetWeapons()
     {
         _pageOpen = false;
+        _weaponDown = false;
+        _weaponHeldBack.Clear();
         _attackState = null;
         _pendingWeaponSlot = -1;
         _waitingWeapon = null;

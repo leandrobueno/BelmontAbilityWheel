@@ -180,6 +180,16 @@ public partial class Wheel : MonoBehaviour
 
             bool sameDevice = control.device != null && control.device.Pointer == modifier.device.Pointer;
 
+            // The weapon page's own button, like the wheel button.
+            var weaponButton = WeaponButton();
+            if (weaponButton != null && control.Pointer == weaponButton.Pointer)
+            {
+                if (!_weaponHeldBack.Contains(name))
+                    _weaponHeldBack.Add(name);
+                _swallowed.Add(name);
+                return false;
+            }
+
             // LB pressed while the wheel button is down opens the weapon page instead of drinking.
             // The wheel counts as used, so the wheel button's release won't replay Interact.
             var page = PageButton();
@@ -196,13 +206,15 @@ public partial class Wheel : MonoBehaviour
             }
 
             int slot = Array.IndexOf(FaceButtons, control.name);
-            if (slot >= 0 && modifier.isPressed && sameDevice)
+            bool spellHeld = modifier.isPressed;
+            if (slot >= 0 && sameDevice && (spellHeld || (weaponButton != null && weaponButton.isPressed)))
             {
                 _swallowed.Add(name);
                 if (ctx.phase == InputActionPhase.Performed)
                 {
+                    // Counts for both buttons, so neither replays its tap action.
                     _lastWheelPressFrame = Time.frameCount;
-                    if (_pageOpen)
+                    if (FaceToWeapons(weaponButton, spellHeld))
                     {
                         _pendingWeaponSlot = slot;
                     }
@@ -478,12 +490,15 @@ public partial class Wheel : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private static ButtonControl ModifierButton()
+    private static ButtonControl ModifierButton() => PadButton(Plugin.Modifier.Value);
+
+    [HideFromIl2Cpp]
+    private static ButtonControl PadButton(string name)
     {
         var pad = Gamepad.current;
         if (pad == null)
             return null;
-        return Plugin.Modifier.Value switch
+        return name switch
         {
             "leftShoulder" => pad.leftShoulder,
             "rightTrigger" => pad.rightTrigger,
@@ -538,24 +553,28 @@ public partial class Wheel : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private void OnModifierReleased()
+    private void OnModifierReleased() => EndHold(_heldBackActions, _modifierDownAt, _modifierDownFrame, true);
+
+    // A held-back button let go: a tap that didn't use the wheel does the button's own action.
+    [HideFromIl2Cpp]
+    private void EndHold(List<string> heldBack, float downAt, int downFrame, bool canReplay)
     {
-        if (_heldBackActions.Count == 0)
+        if (heldBack.Count == 0)
             return;
 
-        float held = Time.unscaledTime - _modifierDownAt;
-        bool usedWheel = _lastWheelPressFrame >= _modifierDownFrame;
-        if (!usedWheel && held <= Plugin.TapSeconds.Value)
+        float held = Time.unscaledTime - downAt;
+        bool usedWheel = _lastWheelPressFrame >= downFrame;
+        if (canReplay && !usedWheel && held <= Plugin.TapSeconds.Value)
         {
-            foreach (var name in _heldBackActions)
+            foreach (var name in heldBack)
                 Replay(name);
         }
         else
         {
-            Plugin.Logger.LogDebug(
-                $"[tap] {string.Join(", ", _heldBackActions)} not done:{(usedWheel ? "the wheel was used" : $"held {held:0.00}s")}");
+            string why = usedWheel ? "the wheel was used" : !canReplay ? "LB is the weapon button" : $"held {held:0.00}s";
+            Plugin.Logger.LogDebug($"[tap] {string.Join(", ", heldBack)} not done:{why}");
         }
-        _heldBackActions.Clear();
+        heldBack.Clear();
     }
 
     // What the game does for a press of this input action.
@@ -801,7 +820,7 @@ public partial class Wheel : MonoBehaviour
             _hud.SetHint(inMenu ? MenuHint() : "");
             var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
             _hud.SetLetters(Keys.KeyboardMode ? Array.ConvertAll(keys, k => Keys.Label(k.Value)) : null);
-            bool held = _assigning || (!inMenu && _modifierDown);   // RB switches tabs in menus
+            bool held = _assigning || (!inMenu && (_modifierDown || _weaponDown));   // RB switches tabs in menus
             // While assigning, the letters say which slot a press picks.
             string labels = Plugin.ButtonLabels.Value;
             _hud.ShowLetters(_assigning || labels == "Always" || (labels == "WhileHeld" && held));

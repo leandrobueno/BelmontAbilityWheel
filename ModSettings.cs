@@ -14,9 +14,9 @@ public static class ProviderV2
     public static object[] Describe() => new object[]
     {
         Plugin.Guid,
-        "技能轮盘", "Ability Wheel",
-        "按住轮盘键并按 Y/X/B/A,快速施放 4 张塔罗牌的法术;再按住 LB 可切换 4 把武器。",
-        "Cast up to 4 Tarot spells: hold the wheel button and press Y/X/B/A. Hold LB too to switch between 4 weapons.",
+        Texts.Resolve(Texts.Title, "zh-CN"), Texts.Resolve(Texts.Title, "en"),
+        Texts.Resolve(Texts.Summary, "zh-CN"),
+        Texts.Resolve(Texts.Summary, "en"),
         SettingRows.All().Select(Item).ToArray<object>(),
         (Action)Plugin.Settings.Save,
         (Action)SettingRows.ResetAll,

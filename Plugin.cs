@@ -11,11 +11,18 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.4.1";
+    public const string Version = "1.5.0";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
         { "rightShoulder", "leftShoulder", "rightTrigger", "leftTrigger", "leftStickPress", "rightStickPress", "select" };
+    // The weapon page: the wheel button then LB (the default), or a button of its own.
+    internal const string WheelThenLB = "wheelButtonThenLB";
+    internal static readonly string[] WeaponButtonChoices =
+    {
+        WheelThenLB, "rightShoulder", "leftShoulder", "rightTrigger", "leftTrigger", "leftStickPress", "rightStickPress",
+        "select",
+    };
 
     internal static ManualLogSource Logger;
     internal static ConfigFile Settings;
@@ -25,6 +32,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string>[] SlotKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<string> AssignKey;
     internal static ConfigEntry<bool> WeaponPage;
+    internal static ConfigEntry<string> WeaponButton;
     internal static ConfigEntry<string>[] WeaponSlots;  // Wheel.SlotLabels order
     internal static ConfigEntry<string>[] WeaponKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<bool> AutoFillSlots;
@@ -78,15 +86,24 @@ public class Plugin : BasePlugin
                 new AcceptableValueList<string>(Keys.AssignKeyChoices)));
 
         WeaponPage = Config.Bind("Weapons", "WeaponPage", true,
-            "Hold the wheel button, then also hold LB, and press Y/X/B/A to switch to that slot's weapon. " +
-            "The weapon stays equipped. Nothing changes until a weapon slot is filled. LB pressed on its own " +
-            "(or before the wheel button) is still the potion. Off when the wheel button is LB itself.");
+            "Hold the weapon button (see WeaponButton) and press Y/X/B/A to switch to that slot's weapon. " +
+            "The weapon stays equipped. Nothing changes until a weapon slot is filled.");
+        WeaponButton = Config.Bind("Weapons", "WeaponButton", WheelThenLB,
+            new ConfigDescription(
+                "The gamepad button for the weapon wheel.\n" +
+                "wheelButtonThenLB: hold the wheel button, then also hold LB. LB pressed on its own (or before the " +
+                "wheel button) is still the potion. Off when the wheel button is LB itself.\n" +
+                "Any other: hold that button on its own and press Y/X/B/A, like the wheel button for spells; a tap " +
+                "still does the button's normal action. leftShoulder (LB) is the exception: the potion is " +
+                "hold-to-drink, so with LB here, LB never drinks a potion (handy with a relic that blocks potions). " +
+                "With both buttons held, Y/X/B/A go to the one pressed last. Off when it's the wheel button itself.",
+                new AcceptableValueList<string>(WeaponButtonChoices)));
         WeaponSlots = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         WeaponKeys = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         for (int slot = 0; slot < WeaponSlots.Length; slot++)
         {
             WeaponSlots[slot] = Config.Bind("Weapons", "Slot" + Wheel.SlotLabels[slot], "",
-                $"Weapon equipped by holding the wheel button, then LB, and pressing {Wheel.SlotLabels[slot]}: its ID, " +
+                $"Weapon equipped by holding the weapon button and pressing {Wheel.SlotLabels[slot]}: its ID, " +
                 "for example WeaponOneHandedTier2 or WeaponSpearTier4. The IDs of the weapons you own are listed in " +
                 "BepInEx\\LogOutput.log ([weapons] owned).\n" +
                 "Easier: in the Equipment menu, highlight a weapon, click L3 (keyboard: AssignKey) and press the slot's button.");
@@ -161,6 +178,8 @@ public class Plugin : BasePlugin
             }
         }
         Log.LogInfo($"Ability Wheel loaded (hold {Modifier.Value} + Y/X/B/A to cast" +
-            (WeaponPage.Value ? $", {Modifier.Value} then LB + Y/X/B/A for weapons)" : ")"));
+            (!WeaponPage.Value ? ")"
+                : WeaponButton.Value == WheelThenLB ? $", {Modifier.Value} then LB + Y/X/B/A for weapons)"
+                : $", {WeaponButton.Value} + Y/X/B/A for weapons)"));
     }
 }

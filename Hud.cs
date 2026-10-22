@@ -30,6 +30,8 @@ internal sealed class Hud
     private static readonly Color DimFrame = new(0.55f, 0.55f, 0.55f, 1f);
     private static readonly Color RimColor = new(0.55f, 0.78f, 1f, 1f);       // blue rim of a StayEquipped card that is out
     private static readonly Color MaskColor = new(0.085f, 0.085f, 0.085f, 0.063f);   // as the relic slots' icon mask
+    private static readonly Color BackdropColor = new(0.55f, 0.55f, 0.55f, 1f);       // a weapon icon's blurred colours
+    private const int SoftEdge = 6;   // pixels over which a weapon icon's square edge fades into its backdrop
     private static readonly Color[] LetterColors =   // Y, X, B, A as on an Xbox pad
     {
         new(1f, 0.8f, 0.2f), new(0.35f, 0.6f, 1f), new(1f, 0.35f, 0.35f), new(0.45f, 0.85f, 0.35f),
@@ -42,6 +44,8 @@ internal sealed class Hud
         internal Image Rim;
         internal Image Spikes;
         internal Image Icon;
+        internal RawImage Backdrop;       // native art, weapons: the icon's blurred colours behind it
+        internal RectMask2D IconEdge;     // the icon's rect, with soft edges for weapons
         internal TextMeshProUGUI Letter;
         internal TextMeshProUGUI Name;
         internal TextMeshProUGUI Cost;
@@ -174,7 +178,7 @@ internal sealed class Hud
                 var icon = card == null ? null : IconFor(card);
                 slot.Icon.sprite = icon;
                 if (slot.Diamond != null && icon != null)
-                    FitIcon(slot.Icon, costs == null);
+                    FitIcon(slot, icon, costs == null);
                 slot.Icon.enabled = icon != null;
                 // The native empty slot is just the dark diamond, as in the game's menus.
                 slot.Name.text = card == null ? slot.Diamond != null ? "" : "-" : icon == null ? Cards.DisplayName(card) : "";
@@ -271,13 +275,22 @@ internal sealed class Hud
     }
 
     // Spell art is drawn to fill a diamond, so it goes in larger than the mask, as the menus do.
-    // Weapon icons are full squares made for the Armoury grid: they keep that upright
-    // orientation (easier to recognise) and shrink until the mask trims only the square's corners.
-    private static void FitIcon(Image icon, bool weapon)
+    // Weapon icons are full squares made for the Armoury grid: they keep that upright orientation
+    // (easier to recognise) at 0.8x the mask, which trims only the square's corners, over a blur
+    // of their own colours that fills the rest of the diamond, with the square's edge faded into
+    // it. Without the blur they shrink to 0.58x, where nothing of the drawing is cut.
+    private static void FitIcon(Slot slot, Sprite icon, bool weapon)
     {
         float mask = Tile * Mathf.Sqrt(2f) * 0.8f;
-        float side = weapon ? mask * 0.58f : mask * 1.25f;
-        icon.rectTransform.sizeDelta = new Vector2(side, side);
+        var backdrop = weapon ? Art.Backdrop(icon) : null;
+        bool blur = backdrop != null;
+        float side = !weapon ? mask * 1.25f : blur ? mask * 0.8f : mask * 0.58f;
+        slot.Icon.rectTransform.sizeDelta = new Vector2(side, side);
+        slot.IconEdge.rectTransform.sizeDelta = new Vector2(side, side);
+        int edge = blur ? SoftEdge : 0;
+        slot.IconEdge.softness = new Vector2Int(edge, edge);
+        slot.Backdrop.texture = backdrop;
+        slot.Backdrop.gameObject.SetActive(blur);
     }
 
     private Slot NewSlot(int index, Vector2 center, TMP_FontAsset font)
@@ -307,7 +320,7 @@ internal sealed class Hud
     }
 
     // The relic slot's layout: an upright diamond as wide as the turned tile, the icon inside a
-    // diamond mask at 80% of it (FitIcon sizes it). Returns the icon.
+    // diamond mask at 80% of it (FitIcon sizes it, and the weapon backdrop). Returns the icon.
     private static Image NewNativeFrame(Slot slot, RectTransform root)
     {
         float size = Tile * Mathf.Sqrt(2f);   // tip to tip
@@ -319,7 +332,14 @@ internal sealed class Hud
         var mask = Ui.NewImage("IconMask", root, Vector2.zero, new Vector2(size * 0.8f, size * 0.8f), MaskColor);
         mask.sprite = Art.Frame;
         mask.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-        var icon = Ui.NewImage("Icon", mask.transform, Vector2.zero, new Vector2(size, size), Color.white);
+        slot.Backdrop = Ui.NewRect("Backdrop", mask.transform, Vector2.zero, new Vector2(size * 0.8f, size * 0.8f))
+            .gameObject.AddComponent<RawImage>();
+        slot.Backdrop.color = BackdropColor;
+        slot.Backdrop.raycastTarget = false;
+        slot.Backdrop.gameObject.SetActive(false);
+        slot.IconEdge = Ui.NewRect("IconEdge", mask.transform, Vector2.zero, new Vector2(size, size))
+            .gameObject.AddComponent<RectMask2D>();
+        var icon = Ui.NewImage("Icon", slot.IconEdge.transform, Vector2.zero, new Vector2(size, size), Color.white);
 
         if (Art.Rim != null)
         {

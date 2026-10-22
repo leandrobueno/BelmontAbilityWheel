@@ -3,7 +3,7 @@
 An ability wheel for **Castlevania: Belmont's Curse**: put up to 4 Tarot spells on the wheel and cast any of them at once, without going through the Tarot menu. A second page switches between up to 4 weapons.
 
 - **Spells, gamepad:** hold **RB** and press **Y / X / B / A**.
-- **Weapons, gamepad:** hold **RB**, then also hold **LB**, and press **Y / X / B / A**.
+- **Weapons, gamepad:** hold **RB**, then also hold **LB**, and press **Y / X / B / A**. Or pick a weapon button of its own (see *Weapon button*), for example LB alone.
 - **Keyboard:** press **1 / 2 / 3 / 4** for spells and **5 / 6 / 7 / 8** for weapons. No hold needed.
 
 Your normal spell button still casts your equipped spell, as before, and LB on its own still drinks a potion.
@@ -24,9 +24,10 @@ Your normal spell button still casts your equipped spell, as before, and LB on i
 - **Weapon wheel.** Hold RB, then LB, and press a face button to switch to that slot's weapon. The weapon stays equipped, as if you had picked it in the Equipment menu, and you keep attacking with X.
   - Nothing changes until you put a weapon on the wheel: in the **Equipment** menu, highlight a weapon, click **L3** (keyboard **F**), then press the slot's button (keyboard **5–8**).
   - The order matters: RB first, then LB. LB pressed first drinks a potion, as always.
+  - **Weapon button** gives the weapon wheel a button of its own instead: hold it and press a face button, the same way RB works for spells. A tap still does the button's normal action, except LB: the potion is hold-to-drink, so with LB as the weapon button, **LB never drinks a potion**. That suits a build with the **Blackened Heart** relic, which blocks healing potions anyway. With RB and the weapon button both held, the face buttons go to the one you pressed last.
   - A switch pressed in the middle of an attack happens as soon as the swing is over (its slot has a blue rim while it waits), the same moment you could walk out of the attack. Keeping on attacking for 2 seconds cancels it.
-  - While LB is held, and for a moment after a switch, the HUD shows the weapons, upright as in the Armoury; the equipped one has the gold frame and spikes.
-- **Settings in the pause menu:** the **MODS SETTINGS** tab, after SYSTEM (title screen: Settings → Mods Settings), with the Belmont UI plugin (see Requirements).
+  - While the weapon button is held, and for a moment after a switch, the HUD shows the weapons, upright as in the Armoury; the equipped one has the gold frame and spikes.
+- **Settings in the pause menu:** the **MODS** tab, after SYSTEM (**MODS SETTINGS** with Belmont UI 0.2; title screen: Settings → the same tab), with the Belmont UI plugin (see Requirements).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
 ### Pin Y spell (on by default)
@@ -40,16 +41,17 @@ Some cards have Blessings or Works of Mercy tasks that only count while the card
 
 ## Settings
 
-With the Belmont UI plugin installed, the settings are in the pause menu: the **MODS SETTINGS** tab after SYSTEM, then **Settings** on the **Ability Wheel** row (on the title screen: **Settings** → **Mods Settings**). They look and work like the game's other settings and apply at once; **Restore defaults** at the end of the section (a Reset button) puts them all back. Without that plugin the wheel works the same, and the config file is the only place to change settings.
+With the Belmont UI plugin installed, the settings are in the pause menu: the **MODS** tab after SYSTEM (**MODS SETTINGS** with Belmont UI 0.2), then **Settings** on the **Ability Wheel** row (on the title screen: **Settings** → **Mods Settings**). They look and work like the game's other settings and apply at once; **Restore defaults** at the end of the section (a Reset button) puts them all back. Without that plugin the wheel works the same, and the config file is the only place to change settings.
 
 You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the file apply the next time the game starts. If you use Belmont Minimap, the same settings are also under Pause menu → **MODS** → **Ability Wheel**.
 
 | Setting | Default | |
 |---|---|---|
-| Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Light Parry, so it's a poor choice. |
+| Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Holy Light, so it's a poor choice. |
 | Keyboard key for slot Y / X / B / A | 1 / 2 / 3 / 4 | Number keys, Q, F, G, T, V, Z, B or the mouse side buttons |
 | Add to wheel key (keyboard) | F | Tarot and Equipment menus. The gamepad always uses L3 |
-| Weapon wheel | On | Hold the wheel button, then LB, and press Y/X/B/A to switch weapons. Off when the wheel button is LB |
+| Weapon wheel | On | Hold the weapon button and press Y/X/B/A to switch weapons |
+| Weapon button (gamepad) | Wheel button + LB | Wheel button + LB (LB alone still drinks; off when the wheel button is LB), or a button of its own: RB, LB, RT, LT, L3, R3 or View, not the wheel button. A tap still does the button's own action, except LB, which then never drinks a potion |
 | Weapon key for slot Y / X / B / A | 5 / 6 / 7 / 8 | Same choices as the spell keys |
 | Pin Y spell | On | See above |
 | Show wheel | Always | Always, while holding the wheel button, or never. Always shown in the Tarot menu. |
@@ -71,7 +73,7 @@ The config file has a few more:
 
 - Castlevania: Belmont's Curse, Steam version on Windows x64. Tested on game version 1.1.3 (BuildID 25975867).
 - [BepInEx 6 Unity IL2CPP x64, bleeding edge #788](https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip), or the game's [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) package (same build).
-- [Belmont UI](../BelmontUI) 0.2.0 or newer, for the Mods Settings tab in the pause menu. Optional: without it the mod still works, with the config file as the only way to change settings.
+- [Belmont UI](../BelmontUI) 0.2.0 or newer, for the settings page in the pause menu (0.3.0 or newer for translated settings). Optional: without it the mod still works, with the config file as the only way to change settings.
 
 ## Install
 
@@ -92,7 +94,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 - A tap of the wheel button does its normal action (RB: Interact) when you release it, not when you press it.
 - The game itself removes Mirror Walk's mirror and Wheel of Chaos' wheels when another spell is equipped, so casting another spell ends them.
 - Like the game's own spell button, a cast pressed in the middle of an attack combo may need a second press.
-- In-game hints are in English. The settings page is in English and Simplified Chinese.
+- The settings page and the wheel's menu hints are in the game's 11 languages with Belmont UI 0.3.0 or newer (English with 0.2.x). The Belmont Minimap page is in English and Simplified Chinese.
 
 ## Troubleshooting
 
@@ -108,6 +110,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.5.0**: *Weapon button* setting: the weapon wheel can have a button of its own (for example LB alone) instead of the wheel button then LB. With LB, LB no longer drinks potions, which suits the Blackened Heart relic. Weapon icons are bigger and fill their diamond with a blur of their own colours. With Belmont UI 0.3.0 or newer, the settings page and the wheel's menu hints follow the game's language (all 11).
 - **1.4.1**: *Button labels* setting: show the Y/X/B/A (or key) labels on the cards always, only while holding the wheel button, or never. They always show while putting a card or weapon on the wheel.
 - **1.4.0**: native look: the wheel uses the game's own slot art (the gold diamond frames of the Equipment and Tarot menus), the four gold spikes on the equipped card, a blue rim on a card that stays out or a weapon switch that waits, grayed-out frames for cards you can't afford, and weapon icons upright as in the Armoury. Falls back to the plain tiles if the art isn't found.
 - **1.3.0**: weapon wheel: hold RB, then LB, and press Y/X/B/A (keyboard 5–8) to switch between 4 weapons; assign them in the Equipment menu with L3.

@@ -223,9 +223,10 @@ public partial class Wheel
             string slots = keyboard
                 ? string.Join(" ", Array.ConvertAll(keys, k => Keys.Label(k.Value)))
                 : "Y X B A";
-            return $"Choose a slot  {slots}      Cancel  {(keyboard ? "Esc" : "L3")}";
+            return $"{Texts.Get(Texts.ChooseSlot)}  {slots}      {Texts.Get(Texts.Cancel)}  {(keyboard ? "Esc" : "L3")}";
         }
-        return Highlighted == null ? "" : $"Add to wheel  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
+        return Highlighted == null ? "" :
+            $"{Texts.Get(Texts.AddToWheel)}  {(keyboard ? Keys.Label(Plugin.AssignKey.Value) : "L3")}";
     }
 
     [HideFromIl2Cpp]

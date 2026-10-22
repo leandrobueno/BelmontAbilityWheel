@@ -3,7 +3,7 @@
 		<TargetFramework>net6.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<CheckEolTargetFramework>false</CheckEolTargetFramework>
-		<Version>1.4.1</Version>
+		<Version>1.5.0</Version>
 		<Authors>leandrobueno</Authors>
 		<GameDir>C:\Program Files (x86)\Steam\steamapps\common\Castlevania Belmont's Curse</GameDir>
 	</PropertyGroup>

@@ -99,6 +99,62 @@ internal static class Art
             Plugin.Logger.LogInfo("[art] native slots, all art found");
     }
 
+    // A weapon icon's own colours, blurred, to fill the diamond around the square Armoury icon. The
+    // icon atlas isn't readable and has no mipmaps, so the blur is two bilinear GPU downscales of
+    // the sprite's atlas rect (to 32 px, then 8 px), shown stretched. One small texture per icon,
+    // kept for the session; null if it can't be made, and the HUD then shows the icon without it.
+    private static readonly Dictionary<string, RenderTexture> Backdrops = new();
+    private static readonly HashSet<string> BackdropFailed = new();
+
+    internal static Texture Backdrop(Sprite sprite)
+    {
+        if (sprite == null || BackdropFailed.Contains(sprite.name))
+            return null;
+        if (Backdrops.TryGetValue(sprite.name, out var cached))
+        {
+            if (cached != null && cached.IsCreated())
+                return cached;
+            // Lost with the graphics device (a resolution or fullscreen change): made again.
+            if (cached != null)
+                cached.Release();
+            Backdrops.Remove(sprite.name);
+        }
+
+        RenderTexture small = null;
+        try
+        {
+            var texture = sprite.texture;
+            var rect = sprite.textureRect;
+            var scale = new Vector2(rect.width / texture.width, rect.height / texture.height);
+            var offset = new Vector2(rect.x / texture.width, rect.y / texture.height);
+            small = RenderTexture.GetTemporary(32, 32, 0);
+            small.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(texture, small, scale, offset);
+            var blurred = new RenderTexture(8, 8, 0)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+                hideFlags = HideFlags.DontUnloadUnusedAsset,
+                name = "AbilityWheel_" + sprite.name,
+            };
+            blurred.Create();
+            Graphics.Blit(small, blurred);
+            Backdrops[sprite.name] = blurred;
+            return blurred;
+        }
+        catch (Exception e)
+        {
+            BackdropFailed.Add(sprite.name);
+            Plugin.Logger.LogWarning($"[art] no backdrop for {sprite.name}, showing the plain icon: {e.Message}");
+            return null;
+        }
+        finally
+        {
+            if (small != null)
+                RenderTexture.ReleaseTemporary(small);
+        }
+    }
+
     private static void Keep<T>(Dictionary<string, T> found, string[] wanted, T asset) where T : UnityEngine.Object
     {
         if (asset == null)
