@@ -116,6 +116,7 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.6.1**: fixed a crash at start-up together with BepInExConfigManager, whose bundled UniverseLib 1.5.1 patches a .NET function 1.6.0 used while loading.
 - **1.6.0**: the menu title is *Ability and Equipment Wheel*. Slots are numbered 1–4, and each slot's gamepad button can be changed (8 new settings); the HUD and menu hints show the game's own controller icons (Xbox, PlayStation or Switch). New *One button for both wheels*: both wheels side by side on the wheel button, weapons on the D-pad. With Belmont UI 0.4, buttons and keys are set by pressing them, combinations included, and the settings page has sections (look, controller, keyboard). *Pin Y spell* is now *Pin equipped card*. Duplicate buttons or keys are refused.
 - **1.5.0**: *Weapon button* setting: the weapon wheel can have a button of its own (for example LB alone) instead of the wheel button then LB. With LB, LB no longer drinks potions, which suits the Blackened Heart relic. Weapon icons are bigger and fill their diamond with a blur of their own colours. With Belmont UI 0.3.0 or newer, the settings page and the wheel's menu hints follow the game's language (all 11). Settings are no longer added to Belmont Minimap's MODS tab; use Belmont UI's MODS tab or the config file.
 - **1.4.1**: *Button labels* setting: show the Y/X/B/A (or key) labels on the cards always, only while holding the wheel button, or never. They always show while putting a card or weapon on the wheel.

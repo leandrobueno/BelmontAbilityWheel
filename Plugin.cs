@@ -11,7 +11,7 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.6.0";
+    public const string Version = "1.6.1";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -57,6 +57,16 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<float> HudOffsetX;
     internal static ConfigEntry<float> HudOffsetY;
     internal static ConfigEntry<bool> TraceActions;
+
+    // Listed rather than found with Assembly.GetTypes(): UniverseLib 1.5.1 (bundled with
+    // BepInExConfigManager) puts a Harmony finalizer on Assembly.GetTypes, and calling it then
+    // crashed the runtime here ("Internal CLR error" in MonoMod's CompileMethodHook).
+    private static readonly System.Type[] PatchClasses =
+    {
+        typeof(FilterActionInput), typeof(FilterMoveInput), typeof(SpellHeldByWheel), typeof(SpellsMenuOpened),
+        typeof(NoEquipWhileAssigning), typeof(WeaponsMenuOpened), typeof(NoWeaponEquipWhileAssigning),
+        typeof(HomeCardInSaves),
+    };
 
     public override void Load()
     {
@@ -195,10 +205,8 @@ public class Plugin : BasePlugin
         // One patch class at a time, so one that fails (after a game update, say) only turns off
         // its own feature instead of every patch after it.
         var harmony = new Harmony(Guid);
-        foreach (var type in typeof(Plugin).Assembly.GetTypes())
+        foreach (var type in PatchClasses)
         {
-            if (type.GetCustomAttributes(typeof(HarmonyPatch), false).Length == 0)
-                continue;
             try
             {
                 harmony.CreateClassProcessor(type).Patch();
