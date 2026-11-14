@@ -6,20 +6,22 @@ An ability and equipment wheel for **Castlevania: Belmont's Curse** (in the game
 - **Weapons, gamepad:** hold **RB**, then also hold **LB**, and press a slot's button. Or give weapons a button of their own (see *Weapon button*), for example LB alone, or put both wheels on RB (*One button for both wheels*, weapons on the D-pad).
 - **Keyboard:** press **1 / 2 / 3 / 4** for spells and **5 / 6 / 7 / 8** for weapons. No hold needed.
 
-Every button and key can be changed in the settings. Your normal spell button still casts your equipped spell, as before, and LB on its own still drinks a potion.
+Every button and key can be changed in the settings: slots can go on the face buttons, the D-pad or the right stick's four directions, any keyboard key can be a slot key, the two wheels can trade places, and D-pad and right-stick slots can work without holding anything. Your normal spell button still casts your equipped spell, as before, and LB on its own still drinks a potion.
 
 ## Features
 
 - **Instant casts from 4 slots.** The wheel swaps the card in for its spell and, by default, puts your equipped card back right after (see *Pin equipped card*).
 - **Every kind of spell works:** hold and charge spells (Life Drain, Laser Scythe Slash), Mirror Walk's teleport, Wheel of Chaos' recasts.
 - **Tap RB as usual.** A quick tap still interacts (on release). Only a hold opens the wheel.
-- **Assign cards in the Tarot menu.** Highlight a card, click **L3** (keyboard **F**), then press the slot's button (keyboard **1–4**). If the card was already on the wheel, the two slots swap. L3 again (keyboard **Esc**) cancels.
+- **Assign cards in the Tarot menu.** Highlight a card, click **L3** (keyboard **F**), then press the slot's button (keyboard **1–4**). If the card was already on the wheel, the two slots swap. L3 again (keyboard **Esc**) cancels. The prompts (*Add to wheel*, *Choose a slot*, *Cancel*) are in the menu's own footer, in the game's prompt style, and each step plays one of the menu's own sounds.
+- **Select instead of cast** (off by default): a spell slot's button only equips its card, and your normal spell button casts it.
 - **HUD in the bottom-right corner.**
   - Each card sits in a gold diamond frame, the same art as the game's Equipment and Tarot menus, with the card's icon inside.
   - Each slot shows its button with the game's own controller icons (Xbox, PlayStation or Switch, following the controller you last used), or its key after you use the keyboard. *Button labels* can hide them, or show them only while you hold the wheel button.
   - A card you can't afford right now is grayed out.
   - Your equipped card has a bright gold frame with the game's four gold "equipped" spikes, and Mirror Walk gets a blue rim while its mirror is out.
   - Holding RB enlarges the wheel and shows the mana costs.
+  - The wheel fades in and out instead of popping, and dips briefly when it turns from one wheel to the other.
   - Fades out together with the game's own HUD, for example when the HUD Auto Hide mod hides it. Holding RB always shows it.
 - **Weapon wheel.** Hold RB, then LB, and press a slot's button to switch to that slot's weapon. The weapon stays equipped, as if you had picked it in the Equipment menu, and you keep attacking with X.
   - Nothing changes until you put a weapon on the wheel: in the **Equipment** menu, highlight a weapon, click **L3** (keyboard **F**), then press the slot's button (keyboard **5–8**).
@@ -27,7 +29,10 @@ Every button and key can be changed in the settings. Your normal spell button st
   - **Weapon button** can be any combination that starts with the wheel button, or a button of its own: hold it and press a slot's button, the same way RB works for spells. A tap still does the button's normal action, except LB: the potion is hold-to-drink, so with LB alone as the weapon button, **LB never drinks a potion**. That suits a build with the **Blackened Heart** relic, which blocks healing potions anyway. With RB and the weapon button both held, the slot buttons go to the one you pressed last.
   - **One button for both wheels** (off by default): holding RB shows the spell and weapon wheels side by side. Spells stay on their buttons and weapons move to the **D-pad** by default; all 8 slot buttons must differ. While RB is held, the D-pad picks a weapon instead of moving Rose.
   - A switch pressed in the middle of an attack happens as soon as the swing is over (its slot has a blue rim while it waits), the same moment you could walk out of the attack. Keeping on attacking for 2 seconds cancels it.
-  - While the weapon button is held, and for a moment after a switch, the HUD shows the weapons, upright as in the Armoury; the equipped one has the gold frame and spikes.
+  - While the weapon button is held, and for a moment after a switch, the HUD shows the weapons: each weapon's full illustration (the card the Armoury shows), upright, filling its diamond; the equipped one has the gold frame and spikes.
+  - **Tap to switch wheels** (off by default): while holding RB, a tap of LB turns the wheel to the other one, and it stays there until the next tap, also after you let go of RB and the next time you play. You then only ever hold one button with a slot's button, and your favourite wheel is the one RB opens. LB still doesn't drink a potion while RB is held. It works with a weapon button that is a combination (RB + LB by default), and turns *Swap the wheels* for you.
+  - **Swap the wheels** (off by default): the wheel button alone opens the weapon wheel, and the weapon button (RB + LB by default) opens the spell wheel. The HUD then shows the weapons by default.
+- **Slots without holding** (off by default): slot buttons on the **D-pad** or the **right stick** work at once, with no wheel button held. Meant for *One button for both wheels* with one wheel on the D-pad and the other on the right stick. The game's own use of those inputs is then off on the gamepad: the D-pad no longer moves Rose (the left stick does) and the right stick no longer moves the camera. Slots on other buttons still need the wheel button.
 - **Settings in the pause menu:** the **MODS** tab, after SYSTEM (**MODS SETTINGS** with Belmont UI 0.2; title screen: Settings → the same tab), with the Belmont UI plugin (see Requirements). With Belmont UI 0.4 you set a button or key by selecting its row and pressing it (hold one button and press another for a combination).
 - **Saves stay vanilla.** Only one card is ever equipped, as in the base game, so the mod can be removed at any time.
 
@@ -55,17 +60,21 @@ You can also edit `BepInEx/config/leandrobueno.abilitywheel.cfg`; edits to the f
 | Wheel size | 1.00x | 0.5–2x |
 | Distance from right / bottom edge | 48 / 48 | Pixels at 1080p |
 | Pin equipped card | On | See above |
+| Select instead of cast | Off | A spell slot's button only equips its card; your spell button casts it. *Pin equipped card* has nothing to do while this is on |
 | Wheel button (gamepad) | RB | RB, LB, RT, LT, L3, R3 or View. A tap still does the button's own action. LT is Holy Light, so it's a poor choice. |
-| One button for both wheels | Off | The wheel button shows both wheels side by side; weapons move to the D-pad. While it's on, the two weapon rows below are hidden (with Belmont UI 0.4) and the weapon wheel stays on |
+| One button for both wheels | Off | The wheel button shows both wheels side by side; weapons move to the D-pad. While it's on, the weapon rows below are hidden (with Belmont UI 0.4) and the weapon wheel stays on |
+| Slots without holding | Off | Slot buttons on the D-pad or the right stick work without holding the wheel button; the D-pad then no longer moves Rose, and the right stick no longer moves the camera. With the wheels apart, a button both wheels use goes to the wheel button's own wheel |
 | Weapon wheel | On | Hold the weapon button and press a slot's button to switch weapons |
+| Swap the wheels | Off | The wheel button alone opens the weapon wheel, the weapon button the spell wheel. Needs a weapon on the wheel; hidden with *One button for both wheels* |
 | Weapon button (gamepad) | RB + LB | A combination that starts with the wheel button (LB alone still drinks; the default), or a button of its own: RB, LB, RT, LT, L3, R3 or View, not the wheel button. A tap still does the button's own action, except LB alone, which then never drinks a potion |
-| Spell slot 1–4 button | Y / X / B / A | Face buttons, D-pad, shoulders, triggers or stick presses; never the wheel or weapon button, and each slot its own |
+| Tap to switch wheels | Off | With a combination as the weapon button: while the wheel button is held, a tap of the second button (LB) turns to the other wheel, which stays until the next tap. Off: the other wheel is open while both are held |
+| Spell slot 1–4 button | Y / X / B / A | Face buttons, D-pad, the right stick pushed up / left / right / down, shoulders, triggers or stick presses; never the wheel or weapon button, and each slot its own. Binding a right-stick direction in the menu needs Belmont UI 0.5.0 |
 | Weapon slot 1–4 button | Y / X / B / A | The same; D-pad up / left / right / down with *One button for both wheels* |
-| Keyboard key for spell slot 1–4 | 1 / 2 / 3 / 4 | Number keys, Q, F, G, T, V, Z, B or the mouse side buttons; each key used once |
+| Keyboard key for spell slot 1–4 | 1 / 2 / 3 / 4 | Any key or a mouse side button; each key used once. A key the game also uses does both things |
 | Keyboard key for weapon slot 1–4 | 5 / 6 / 7 / 8 | Same choices as the spell keys |
-| Add to wheel key (keyboard) | F | Tarot and Equipment menus. The gamepad always uses L3 |
+| Add to wheel key (keyboard) | F | Tarot and Equipment menus. Any key those menus don't use themselves. The gamepad always uses L3 |
 
-A change that would put two slots on one button, or a slot on the wheel or weapon button, is refused: with Belmont UI 0.4 the row says why and waits for another press; with older versions the setting goes back to its old value. In a press-to-bind row, B (gamepad), Esc and Backspace cancel, as in the game's own controls menu, so B can't be picked by pressing it: **Restore defaults** puts slot 3 back on B.
+A change that would put two slots on one button, or a slot on the wheel or weapon button, is refused: with Belmont UI 0.4 the row says why and waits for another press; with older versions the setting goes back to its old value. In a press-to-bind row, Esc and Backspace cancel, as in the game's own controls menu. With Belmont UI 0.6.1 a tap of B (gamepad) picks B and holding B cancels; with 0.6.0 and older B always cancels, so B can't be picked by pressing it (**Restore defaults** puts slot 3 back on B).
 
 The config file has a few more:
 - `TapSeconds`: how long a press of the wheel button still counts as a tap.
@@ -77,9 +86,9 @@ The config file has a few more:
 
 ## Requirements
 
-- Castlevania: Belmont's Curse, Steam version on Windows x64. Tested on game version 1.1.3 (BuildID 25975867).
+- Castlevania: Belmont's Curse, Steam version on Windows x64. Tested on game version 1.1.4.
 - [BepInEx 6 Unity IL2CPP x64, bleeding edge #788](https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip), or the game's [BepInEx for Castlevania](https://www.nexusmods.com/castlevaniabelmontscurse/mods/3) package (same build).
-- [Belmont UI](../BelmontUI) 0.2.0 or newer, for the settings page in the pause menu (0.3.0 or newer for translated settings). Optional: without it the mod still works, with the config file as the only way to change settings.
+- [Belmont UI](../BelmontUI) 0.2.0 or newer, for the settings page in the pause menu (0.3.0 or newer for translated settings, 0.4.0 for press-to-bind rows, 0.5.0 to bind the right stick's directions in the menu). Optional: without it the mod still works, with the config file as the only way to change settings.
 
 ## Install
 
@@ -104,7 +113,7 @@ Exit the game and delete `BepInEx/plugins/AbilityWheel/`. Your save is unaffecte
 
 ## Troubleshooting
 
-`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[home]`, `[weapon]`, `[assign]`, `[hud]`, `[art]`, `[cards]` and `[weapons]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
+`BepInEx/LogOutput.log` records what the mod does, tagged `[wheel]`, `[cast]`, `[select]`, `[home]`, `[weapon]`, `[assign]`, `[prompt]`, `[hud]`, `[art]`, `[cards]` and `[weapons]`. For a card that misbehaves on the wheel, set `TraceActions = true` under `[Debug]` in the config file, reproduce it, and include the log in your report together with the game version, mod version and what you pressed.
 
 ## Building from source
 
@@ -116,6 +125,9 @@ MIT, see [LICENSE](LICENSE).
 
 ## Changelog
 
+- **1.8.1**: using the wheel no longer makes the game stutter. The game's own equip unloads what the old weapon or card needs and loads the new one's on the spot: measured at 20 to 45 ms for every weapon switch and 10 to 45 ms for a card, where a frame has 4 to 16 ms. The wheel now keeps its weapons and cards loaded (they are loaded when a save loads and when the Equipment or Tarot menu closes), so a switch or cast takes under 1 ms. Also gone: a hitch on the first press after a room change (the wheel loaded every owned weapon and card again, now only its own, one a frame) and one the first time the wheel showed. With Belmont UI 0.6.1, a slot button can be set to B / Circle in the settings (tap B; holding B cancels).
+- **1.8.0**: *Tap to switch wheels*: while holding the wheel button, a tap of LB turns to the other wheel and it stays, so one hold is enough and the wheel button opens the wheel you used last. Putting a card or weapon on the wheel plays the menu's own sounds (pick, place, cancel). A weapon-button combination whose second button the game doesn't use by itself now opens the other wheel too.
+- **1.7.0**: from players' requests. *Swap the wheels*: the wheel button alone opens the weapon wheel and RB + LB the spell wheel. Slots can go on the **right stick**'s four directions, and *Slots without holding* makes D-pad and right-stick slots work with no button held. *Select instead of cast*: a spell slot only equips its card. **Any keyboard key** can be a slot key or the Add to wheel key. The wheel fades in and out. Weapons show their full illustration, filling the diamond. The *Add to wheel* prompt is now in the menus' own footer, in the game's font and style, away from *Back*. Tested on the game's 1.1.4 update.
 - **1.6.1**: fixed a crash at start-up together with BepInExConfigManager, whose bundled UniverseLib 1.5.1 patches a .NET function 1.6.0 used while loading.
 - **1.6.0**: the menu title is *Ability and Equipment Wheel*. Slots are numbered 1–4, and each slot's gamepad button can be changed (8 new settings); the HUD and menu hints show the game's own controller icons (Xbox, PlayStation or Switch). New *One button for both wheels*: both wheels side by side on the wheel button, weapons on the D-pad. With Belmont UI 0.4, buttons and keys are set by pressing them, combinations included, and the settings page has sections (look, controller, keyboard). *Pin Y spell* is now *Pin equipped card*. Duplicate buttons or keys are refused.
 - **1.5.0**: *Weapon button* setting: the weapon wheel can have a button of its own (for example LB alone) instead of the wheel button then LB. With LB, LB no longer drinks potions, which suits the Blackened Heart relic. Weapon icons are bigger and fill their diamond with a blur of their own colours. With Belmont UI 0.3.0 or newer, the settings page and the wheel's menu hints follow the game's language (all 11). Settings are no longer added to Belmont Minimap's MODS tab; use Belmont UI's MODS tab or the config file.

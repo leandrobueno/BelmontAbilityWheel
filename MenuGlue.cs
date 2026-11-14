@@ -101,7 +101,8 @@ internal static class MenuGlue
                 Devices = row.Kind == "key" ? BelmontUi.BindingDevices.Keyboard : BelmontUi.BindingDevices.Gamepad,
                 AllowCombinations = row.Combos,
                 // A combination's parts are both buttons that can hold a wheel; Bindings checks the order.
-                Allowed = row.Combos ? Plugin.ModifierChoices : row.Values,
+                Allowed = row.Combos ? Plugin.ModifierChoices : row.AnyControl ? null : row.Values,
+                Reserved = row.Reserved,
                 Validate = binding => Bindings.Check(entry, binding) switch
                 {
                     Bindings.Trouble.InUse => new BelmontUi.LocalizedText(Texts.AlreadyAssigned),

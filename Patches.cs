@@ -44,6 +44,25 @@ internal static class FilterMoveInput
     }
 }
 
+// The right stick (the camera) arrives here. By name: the game's method has a typo that an update
+// may fix, and then only this patch fails.
+[HarmonyPatch(typeof(GamePlayerInput), "ProcessRighStickActionBinding")]
+internal static class FilterAimInput
+{
+    private static bool Prefix(GamePlayerInput __instance, InputAction.CallbackContext ctx)
+    {
+        try
+        {
+            return Wheel.Instance?.LetAimThrough(__instance, ctx) ?? true;
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogError($"[input] right stick filter failed: {e}");
+            return true;
+        }
+    }
+}
+
 // Hold spells ask here whether Spell is still held (Hold.cs).
 [HarmonyPatch(typeof(GamePlayerInput), nameof(GamePlayerInput.GetInputState))]
 internal static class SpellHeldByWheel
@@ -128,6 +147,14 @@ internal static class NoWeaponEquipWhileAssigning
             return true;
         }
     }
+}
+
+// A wheel switch keeps the weapon it takes off loaded (Warm.cs): the game's unload of that
+// weapon's assets is skipped for the length of that one equip call.
+[HarmonyPatch(typeof(PreWarmCollection), nameof(PreWarmCollection.Unload))]
+internal static class KeepWeaponLoaded
+{
+    private static bool Prefix() => !Wheel.KeepLoaded;
 }
 
 // So the save holds the home card, not a wheel card on loan.

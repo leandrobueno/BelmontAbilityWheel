@@ -21,6 +21,15 @@ internal sealed class Hud
     private const float ClusterGap = 40f;  // between the spell and weapon wheels, side by side
 
     private const float FadeOutSeconds = 0.3f;   // from solid to hidden, when the game HUD fades
+    // The wheel fades and grows in when it appears, fades out when it goes, dips when it turns
+    // from one wheel to the other, and eases into its held size.
+    private const float ShowSeconds = 0.14f;
+    private const float HideSeconds = 0.2f;
+    private const float PageSeconds = 0.16f;
+    private const float HeldSeconds = 0.09f;
+    private const float AppearScale = 0.93f;
+    private const float HeldScale = 1.08f;
+    private const float PageDip = 0.2f;
 
     private static readonly Color TileColor = new(0.07f, 0.05f, 0.09f, 1f);
     private static readonly Color FrameColor = new(0.02f, 0.01f, 0.03f, 1f);
@@ -33,6 +42,10 @@ internal sealed class Hud
     private static readonly Color MaskColor = new(0.085f, 0.085f, 0.085f, 0.063f);   // as the relic slots' icon mask
     private static readonly Color BackdropColor = new(0.55f, 0.55f, 0.55f, 1f);       // a weapon icon's blurred colours
     private const int SoftEdge = 6;   // pixels over which a weapon icon's square edge fades into its backdrop
+    // A weapon's full illustration is a tall card: narrower than the diamond, so its length fits,
+    // with its sides faded into the blur of its own colours.
+    private const float PictureWidth = 0.72f;   // of the diamond mask
+    private const int PictureEdge = 14;
     private static readonly Color[] LetterColors =   // Y, X, B, A as on an Xbox pad
     {
         new(1f, 0.8f, 0.2f), new(0.35f, 0.6f, 1f), new(1f, 0.35f, 0.35f), new(0.45f, 0.85f, 0.35f),
@@ -45,7 +58,9 @@ internal sealed class Hud
         internal Image Rim;
         internal Image Spikes;
         internal Image Icon;
-        internal RawImage Backdrop;       // native art, weapons: the icon's blurred colours behind it
+        internal RawImage Backdrop;       // native art, weapons: the picture's blurred colours behind it
+        internal RawImage Picture;        // native art, weapons: the full illustration, instead of Icon
+        internal RenderTexture PictureTexture;
         internal RectMask2D IconEdge;     // the icon's rect, with soft edges for weapons
         internal TextMeshProUGUI Letter;
         internal TextMeshProUGUI Name;
@@ -66,6 +81,11 @@ internal sealed class Hud
     private readonly Dictionary<string, Sprite> _icons = new();
     private readonly HashSet<string> _iconFailed = new();
     private bool _visible = true;
+    private bool _canvasOn = true;
+    private float _shown;            // 0 hidden .. 1 fully there
+    private bool _page;
+    private float _pageFade = 1f;
+    private float _heldScale = 1f;
     private (float, float, float) _layout = (-1f, 0f, 0f);
     private float _fade = 1f;
     private float _alpha = -1f;
@@ -74,6 +94,9 @@ internal sealed class Hud
 
     // False once Unity has destroyed the canvas, so Wheel builds a new one.
     internal bool Alive => _canvas != null;
+
+    // Drawn fully transparent: a new HUD's first frames, shown to nobody (Wheel.UpdateHud).
+    internal bool Silent;
 
     internal Hud()
     {
@@ -151,12 +174,32 @@ internal sealed class Hud
             slot.Letter.gameObject.SetActive(show);
     }
 
-    internal void SetVisible(bool visible)
+    // The wheel fades in and out; instant is for when there's no game to show it over (Rose is gone).
+    internal void SetVisible(bool visible, bool instant = false)
     {
-        if (visible == _visible)
-            return;
         _visible = visible;
-        _canvas.SetActive(visible);
+        if (instant)
+            _shown = visible ? 1f : 0f;
+        if (visible && !_canvasOn)
+        {
+            _canvasOn = true;
+            _canvas.SetActive(true);
+        }
+        else if (!visible && instant && _canvasOn)
+        {
+            _canvasOn = false;
+            _canvas.SetActive(false);
+        }
+    }
+
+    // Which wheel the single cluster shows; turning to the other one dips the tiles.
+    internal void SetPage(bool weapons)
+    {
+        if (weapons == _page)
+            return;
+        _page = weapons;
+        if (_shown > 0f)
+            _pageFade = 0f;
     }
 
     // fade: how visible the game's HUD is (1 = fully). The tiles follow it down over at least
@@ -164,8 +207,11 @@ internal sealed class Hud
     // back at once.
     internal void Frame(bool held, float fade)
     {
+        float dt = Time.unscaledDeltaTime;
+        _heldScale = Mathf.MoveTowards(_heldScale, held ? HeldScale : 1f, dt * (HeldScale - 1f) / HeldSeconds);
+        float appear = Mathf.Lerp(AppearScale, 1f, Ease(_shown));
         // Set only on changes: touching the layout every frame makes Unity rebuild the UI.
-        var layout = (Plugin.HudScale.Value * (held ? 1.08f : 1f), Plugin.HudOffsetX.Value, Plugin.HudOffsetY.Value);
+        var layout = (Plugin.HudScale.Value * _heldScale * appear, Plugin.HudOffsetX.Value, Plugin.HudOffsetY.Value);
         if (layout != _layout)
         {
             _layout = layout;
@@ -174,14 +220,35 @@ internal sealed class Hud
         }
 
         fade = Mathf.Clamp01(fade);
-        _fade = fade >= _fade ? fade : Mathf.Max(fade, _fade - Time.unscaledDeltaTime / FadeOutSeconds);
-        float alpha = Plugin.HudOpacity.Value * _fade;
+        _fade = fade >= _fade ? fade : Mathf.Max(fade, _fade - dt / FadeOutSeconds);
+        Animate();
+    }
+
+    // Every frame, also while hidden: the fade-out plays on what the wheel last showed, and the
+    // canvas goes off when it's done.
+    internal void Animate()
+    {
+        float dt = Time.unscaledDeltaTime;
+        _shown = Mathf.MoveTowards(_shown, _visible ? 1f : 0f, dt / (_visible ? ShowSeconds : HideSeconds));
+        _pageFade = Mathf.MoveTowards(_pageFade, 1f, dt / PageSeconds);
+        if (!_visible && _shown <= 0f)
+        {
+            if (_canvasOn)
+            {
+                _canvasOn = false;
+                _canvas.SetActive(false);
+            }
+            return;
+        }
+        float alpha = Silent ? 0f : Plugin.HudOpacity.Value * _fade * Ease(_shown) * Mathf.Lerp(PageDip, 1f, _pageFade);
         if (alpha != _alpha)
         {
             _alpha = alpha;
             _group.alpha = alpha;
         }
     }
+
+    private static float Ease(float t) => t * t * (3f - 2f * t);
 
     // One wheel's 4 tiles: cluster 0 is the wheel shown alone, 1 the merged weapon wheel. costs is
     // null for weapons, which cost nothing.
@@ -192,17 +259,27 @@ internal sealed class Hud
         {
             var slot = _slots[cluster * 4 + i];
             var card = cards[i];
-            if (!Cards.Same(card, slot.Card) && !(card == null && slot.Card == null))
+            // A picture lost with the graphics device (a resolution change) is made again.
+            bool pictureLost = slot.PictureTexture is not null && (slot.PictureTexture == null || !slot.PictureTexture.IsCreated());
+            if ((!Cards.Same(card, slot.Card) && !(card == null && slot.Card == null)) || pictureLost)
             {
                 slot.Card = card;
                 slot.State = -1;
-                var icon = card == null ? null : IconFor(card);
+                bool weapon = costs == null;
+                var picture = weapon && card != null && slot.Diamond != null ? Art.Picture(card.TryCast<WeaponItemData>()) : null;
+                var icon = card == null || picture != null ? null : IconFor(card);
                 slot.Icon.sprite = icon;
-                if (slot.Diamond != null && icon != null)
-                    FitIcon(slot, icon, costs == null);
+                slot.PictureTexture = picture;
+                if (slot.Picture != null)
+                    slot.Picture.gameObject.SetActive(picture != null);
+                if (picture != null)
+                    FitPicture(slot, picture);
+                else if (slot.Diamond != null && icon != null)
+                    FitIcon(slot, icon, weapon);
                 slot.Icon.enabled = icon != null;
                 // The native empty slot is just the dark diamond, as in the game's menus.
-                slot.Name.text = card == null ? slot.Diamond != null ? "" : "-" : icon == null ? Cards.DisplayName(card) : "";
+                slot.Name.text = card == null ? slot.Diamond != null ? "" : "-"
+                    : icon == null && picture == null ? Cards.DisplayName(card) : "";
             }
 
             bool hasCost = costs != null;
@@ -295,11 +372,27 @@ internal sealed class Hud
         slot.Cost.rectTransform.anchoredPosition = new Vector2(0f, gold && slot.Spikes != null ? Tip - SpikeDrop : Tip);
     }
 
+    // A weapon's full illustration: upright, as in the Armoury, its sides faded into a blur of its
+    // own colours that fills the rest of the diamond. Its top and bottom reach past the diamond's
+    // tips, so the diamond has no empty corner and shows no square edge.
+    private static void FitPicture(Slot slot, RenderTexture picture)
+    {
+        float mask = Tile * Mathf.Sqrt(2f) * 0.8f;
+        var size = new Vector2(mask * PictureWidth, mask * PictureWidth * picture.height / picture.width);
+        slot.Picture.texture = picture;
+        slot.Picture.rectTransform.sizeDelta = size;
+        slot.IconEdge.rectTransform.sizeDelta = size;
+        slot.IconEdge.softness = new Vector2Int(PictureEdge, 0);
+        var backdrop = Art.Backdrop(picture);
+        slot.Backdrop.texture = backdrop;
+        slot.Backdrop.gameObject.SetActive(backdrop != null);
+    }
+
     // Spell art is drawn to fill a diamond, so it goes in larger than the mask, as the menus do.
-    // Weapon icons are full squares made for the Armoury grid: they keep that upright orientation
-    // (easier to recognise) at 0.8x the mask, which trims only the square's corners, over a blur
-    // of their own colours that fills the rest of the diamond, with the square's edge faded into
-    // it. Without the blur they shrink to 0.58x, where nothing of the drawing is cut.
+    // A weapon without an illustration shows its Armoury icon, a full square made for the grid:
+    // upright at 0.8x the mask, which trims only the square's corners, over a blur of its own
+    // colours, with the square's edge faded into it. Without the blur it shrinks to 0.58x, where
+    // nothing of the drawing is cut.
     private static void FitIcon(Slot slot, Sprite icon, bool weapon)
     {
         float mask = Tile * Mathf.Sqrt(2f) * 0.8f;
@@ -361,6 +454,10 @@ internal sealed class Hud
         slot.IconEdge = Ui.NewRect("IconEdge", mask.transform, Vector2.zero, new Vector2(size, size))
             .gameObject.AddComponent<RectMask2D>();
         var icon = Ui.NewImage("Icon", slot.IconEdge.transform, Vector2.zero, new Vector2(size, size), Color.white);
+        slot.Picture = Ui.NewRect("Picture", slot.IconEdge.transform, Vector2.zero, new Vector2(size, size))
+            .gameObject.AddComponent<RawImage>();
+        slot.Picture.raycastTarget = false;
+        slot.Picture.gameObject.SetActive(false);
 
         if (Art.Rim != null)
         {

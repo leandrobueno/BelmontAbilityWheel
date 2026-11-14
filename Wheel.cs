@@ -77,12 +77,22 @@ public partial class Wheel : MonoBehaviour
     private Hud _hud;
     private bool _hudBroken;
 
+    // How long the wheel shows after a slot is used without holding a wheel button.
+    private const float FlashSeconds = 1.2f;
+    private float _flashUntil;
+    // With the wheels swapped the HUD shows the weapon wheel: a spell slot just used shows the
+    // spell wheel for a moment, as a weapon switch shows the weapon wheel otherwise.
+    private float _showSpellsUntil;
+
     private const float TraceSeconds = 4f;
     private ActionInputState _spellState;
     private bool _spellWasDown;
     private float _traceUntil;
     private string[] _tracedActions = Array.Empty<string>();
     private readonly HashSet<string> _describedCards = new();
+
+    private const int HudRehearsalFrames = 3;
+    private int _hudRehearsal;
 
     private void Awake()
     {
@@ -93,6 +103,8 @@ public partial class Wheel : MonoBehaviour
     {
         try
         {
+            _markStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            TrackFrames();
             Keys.TrackDevice();
             if (!FindPlayer())
             {
@@ -102,9 +114,12 @@ public partial class Wheel : MonoBehaviour
 
             TrackHome();
             UpdateAssign();
+            TrackMenus();
+            ReviveSlotItem();
             TrackModifier();
             TrackPage();
             PollPadSlots();
+            _markInput = System.Diagnostics.Stopwatch.GetTimestamp();
             if (_pendingWeaponSlot < 0)
                 PollWeaponKeys();
             if (_pendingWeaponSlot >= 0)
@@ -117,6 +132,7 @@ public partial class Wheel : MonoBehaviour
             {
                 UpdateWeaponSwitch();
             }
+            _markWeapons = System.Diagnostics.Stopwatch.GetTimestamp();
             if (_pendingSlot < 0)
                 PollSlotKeys();
             if (_pendingSlot >= 0)
@@ -133,7 +149,9 @@ public partial class Wheel : MonoBehaviour
             WatchLoan();
             if (Plugin.TraceActions.Value)
                 Trace();
+            _markSpells = System.Diagnostics.Stopwatch.GetTimestamp();
             UpdateHud();
+            ReportUpdate();
         }
         catch (Exception e)
         {
@@ -191,24 +209,28 @@ public partial class Wheel : MonoBehaviour
                 return false;
             }
 
-            // LB pressed while the wheel button is down opens the weapon page instead of drinking.
-            // The wheel counts as used, so the wheel button's release won't replay Interact.
+            // LB pressed while the wheel button is down opens the weapon page instead of drinking
+            // (or, with TapToSwitch, turns the wheel: TrackPage does that). The wheel counts as
+            // used, so the wheel button's release won't replay Interact.
             var page = PageButton();
             if (page != null && control.Pointer == page.Pointer && modifier.isPressed && sameDevice)
             {
                 _swallowed.Add(name);
-                if (!_pageOpen)
+                _lastWheelPressFrame = Time.frameCount;
+                if (!_pageOpen && !Plugin.TapToSwitch.Value)
                 {
                     _pageOpen = true;
-                    _lastWheelPressFrame = Time.frameCount;
                     Plugin.Logger.LogDebug($"[weapon] page open ({name} held back)");
                 }
                 return false;
             }
 
             // A slot button while its wheel is held belongs to the wheel; PollPadSlots acts on it.
-            bool spellHeld = modifier.isPressed;
-            bool weaponsHeld = Merged ? spellHeld : _pageOpen || (weaponButton != null && weaponButton.isPressed);
+            bool wheelHeld = modifier.isPressed;
+            bool otherHeld = Merged ? wheelHeld : _pageOpen || (weaponButton != null && weaponButton.isPressed);
+            bool swapped = Swapped;
+            bool spellHeld = swapped ? otherHeld : wheelHeld;
+            bool weaponsHeld = swapped ? wheelHeld : otherHeld;
             if (sameDevice && ((spellHeld && IsSlotButton(control, Plugin.SlotButtons)) ||
                     (weaponsHeld && IsSlotButton(control, Plugin.WeaponSlotButtons))))
             {
@@ -288,6 +310,7 @@ public partial class Wheel : MonoBehaviour
             $"home card {_home?.itemID ?? "none"}, weapon {inventoryComponent.inventory.GetEquippedWeapon()?.itemID ?? "none"}");
         RefreshSlots();
         RefreshWeapons();
+        LoadWheelItems("a save was loaded");
         return true;
     }
 
@@ -298,10 +321,10 @@ public partial class Wheel : MonoBehaviour
     {
         if (_lostHomeId != null && _home?.itemID == _lostLoanId)
         {
-            var home = Cards.Owned(inventory).FirstOrDefault(s => s.itemID == _lostHomeId);
+            var home = Cards.Find(Cards.Owned(inventory), _lostHomeId);
             if (home != null)
             {
-                inventory.EquipSpellFromInventory(home);
+                EquipSpell(inventory, home, true);
                 _home = home;
                 Plugin.Logger.LogInfo($"[home] {_lostLoanId} -> {_lostHomeId}: on loan when Rose was reloaded");
             }
@@ -342,6 +365,8 @@ public partial class Wheel : MonoBehaviour
         _loanSticky = false;
         _heldBackActions.Clear();
         _swallowed.Clear();
+        _flashUntil = 0f;
+        _showSpellsUntil = 0f;
         ForgetWeapons();
         CancelAssign();
         HideHud();
@@ -471,7 +496,7 @@ public partial class Wheel : MonoBehaviour
 
         var inventory = Inventory;
         if (inventory != null && !Cards.Same(inventory.GetEquippedSpell(), _home))
-            inventory.EquipSpellFromInventory(Cards.Live<SpellItemData>(_home) ?? _home);
+            EquipSpell(inventory, Cards.Live<SpellItemData>(_home) ?? _home, true);
         Plugin.Logger.LogInfo(
             $"[home] {_onLoan.itemID} -> {_home.itemID}: {reason}, {Time.unscaledTime - _loanedAt:0.00}s after the cast");
         _onLoan = null;
@@ -499,6 +524,10 @@ public partial class Wheel : MonoBehaviour
             "dpad/left" => pad.dpad.left,
             "dpad/right" => pad.dpad.right,
             "dpad/down" => pad.dpad.down,
+            "rightStick/up" => pad.rightStick.up,
+            "rightStick/left" => pad.rightStick.left,
+            "rightStick/right" => pad.rightStick.right,
+            "rightStick/down" => pad.rightStick.down,
             "leftShoulder" => pad.leftShoulder,
             "rightShoulder" => pad.rightShoulder,
             "leftTrigger" => pad.leftTrigger,
@@ -527,36 +556,90 @@ public partial class Wheel : MonoBehaviour
     [HideFromIl2Cpp]
     private static bool Merged => Plugin.MergedWheels.Value && Plugin.WeaponPage.Value;
 
+    // The wheel button opens the weapon wheel and the weapon button the spell wheel. Like the weapon
+    // wheel itself, only once a weapon slot is filled: until then the wheel button casts spells.
+    [HideFromIl2Cpp]
+    private bool Swapped => Plugin.SwapWheels.Value && !Merged && HasWeapons;
+
+    // Slots that SlotsWithoutHolding lets work on their own: the game only uses the D-pad and the
+    // right stick for things the mod can keep from it (Move and the camera).
+    [HideFromIl2Cpp]
+    private static bool IsDirect(string control) =>
+        control.StartsWith("dpad/", StringComparison.Ordinal) || control.StartsWith("rightStick/", StringComparison.Ordinal);
+
+    // Which wheels take slot presses now. spells / weapons: that wheel is held open, so all of its
+    // slot buttons count. direct: no wheel button is down and SlotsWithoutHolding is on, so the
+    // D-pad and right-stick slots of both wheels count.
+    [HideFromIl2Cpp]
+    private void LiveWheels(out bool spells, out bool weapons, out bool direct)
+    {
+        bool merged = Merged;
+        bool other = !merged && _pageOpen;
+        bool wheel = _modifierDown && !other;
+        bool swapped = Swapped;
+        spells = merged ? _modifierDown : swapped ? other : wheel;
+        weapons = merged ? _modifierDown : swapped ? wheel : other;
+        direct = Plugin.NoHold.Value && !_modifierDown && !_weaponDown && !other;
+    }
+
     // A slot button pressed while its wheel is held: Y/X/B/A by default, the D-pad for the merged
-    // weapon wheel. Polled rather than taken from the game's input, which never sees the D-pad as
-    // a button (it's Move).
+    // weapon wheel. Polled rather than taken from the game's input, which never sees the D-pad or
+    // the right stick as buttons (they're Move and the camera). The wheel button's own wheel goes
+    // first, so it wins a button both wheels have without a hold.
     [HideFromIl2Cpp]
     private void PollPadSlots()
     {
         if (MenuOpen || !GameplayInputActive())
             return;
-        bool merged = Merged;
-        bool spells = _modifierDown && (merged || !_pageOpen);
-        bool weapons = merged ? _modifierDown : _pageOpen;
-        for (int slot = 0; slot < SlotLabels.Length; slot++)
+        LiveWheels(out bool spells, out bool weapons, out bool direct);
+        bool weaponsFirst = Swapped;
+        for (int pass = 0; pass < 2; pass++)
         {
-            if (spells && PadButton(Plugin.SlotButtons[slot].Value) is { wasPressedThisFrame: true } button)
+            bool weaponPass = (pass == 0) == weaponsFirst;
+            if (weaponPass && !HasWeapons)
+                continue;
+            bool held = weaponPass ? weapons : spells;
+            if (!held && !direct)
+                continue;
+            var buttons = weaponPass ? Plugin.WeaponSlotButtons : Plugin.SlotButtons;
+            for (int slot = 0; slot < SlotLabels.Length; slot++)
             {
-                _pendingSlot = slot;
-                _pendingControl = button;
-                _lastWheelPressFrame = Time.frameCount;   // the wheel button won't replay its tap action
-                return;
-            }
-            if (weapons && PadButton(Plugin.WeaponSlotButtons[slot].Value) is { wasPressedThisFrame: true })
-            {
-                _pendingWeaponSlot = slot;
-                _lastWheelPressFrame = Time.frameCount;
+                string name = buttons[slot].Value;
+                if ((!held && !IsDirect(name)) || !SlotPressed(name, out var button))
+                    continue;
+                if (weaponPass)
+                {
+                    _pendingWeaponSlot = slot;
+                }
+                else
+                {
+                    _pendingSlot = slot;
+                    _pendingControl = button;
+                }
+                if (held)
+                    _lastWheelPressFrame = Time.frameCount;   // the wheel button won't replay its tap action
+                else
+                    _flashUntil = Time.unscaledTime + FlashSeconds;
                 return;
             }
         }
     }
 
-    // Patches.cs Move filter: false drops a D-pad press while a held wheel has a slot on it, so Rose
+    // A stick pushed diagonally presses two directions; only the stronger one counts.
+    [HideFromIl2Cpp]
+    private static bool SlotPressed(string name, out ButtonControl button)
+    {
+        button = PadButton(name);
+        if (button == null || !button.wasPressedThisFrame)
+            return false;
+        if (!name.StartsWith("rightStick/", StringComparison.Ordinal))
+            return true;
+        var stick = Gamepad.current.rightStick.ReadValue();
+        bool vertical = name.EndsWith("up", StringComparison.Ordinal) || name.EndsWith("down", StringComparison.Ordinal);
+        return vertical ? Mathf.Abs(stick.y) >= Mathf.Abs(stick.x) : Mathf.Abs(stick.x) > Mathf.Abs(stick.y);
+    }
+
+    // Patches.cs Move filter: false drops a D-pad press while a wheel has a live slot on it, so Rose
     // doesn't walk while a slot is picked. Releases always go through, so she never keeps walking.
     [HideFromIl2Cpp]
     internal bool LetMoveThrough(GamePlayerInput input, InputAction.CallbackContext ctx)
@@ -567,15 +650,33 @@ public partial class Wheel : MonoBehaviour
         var control = ctx.control;
         if (control == null || (control.name != "dpad" && control.parent?.name != "dpad"))
             return true;
-        bool merged = Merged;
-        bool spells = _modifierDown && (merged || !_pageOpen);
-        bool weapons = merged ? _modifierDown : _pageOpen;
-        return !((spells && UsesDpad(Plugin.SlotButtons)) || (weapons && UsesDpad(Plugin.WeaponSlotButtons)));
+        return !SlotsLiveOn("dpad/");
+    }
+
+    // Patches.cs right-stick filter: the same for the camera while a wheel has a live slot on the
+    // right stick. The game keeps the stick's last value, so it's cleared too.
+    [HideFromIl2Cpp]
+    internal bool LetAimThrough(GamePlayerInput input, InputAction.CallbackContext ctx)
+    {
+        if (_input == null || input == null || input.Pointer != _input.Pointer || ctx.phase == InputActionPhase.Canceled)
+            return true;
+        if (ctx.control?.device?.TryCast<Gamepad>() == null || !SlotsLiveOn("rightStick/"))
+            return true;
+        input.aimInputValue = Vector2.zero;
+        return false;
     }
 
     [HideFromIl2Cpp]
-    private static bool UsesDpad(ConfigEntry<string>[] slots) =>
-        Array.Exists(slots, s => s.Value.StartsWith("dpad/", StringComparison.Ordinal));
+    private bool SlotsLiveOn(string prefix)
+    {
+        LiveWheels(out bool spells, out bool weapons, out bool direct);
+        return ((spells || direct) && Uses(Plugin.SlotButtons, prefix)) ||
+            ((weapons || direct) && HasWeapons && Uses(Plugin.WeaponSlotButtons, prefix));
+    }
+
+    [HideFromIl2Cpp]
+    private static bool Uses(ConfigEntry<string>[] slots, string prefix) =>
+        Array.Exists(slots, s => s.Value.StartsWith(prefix, StringComparison.Ordinal));
 
     [HideFromIl2Cpp]
     private void TrackModifier()
@@ -620,7 +721,11 @@ public partial class Wheel : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private void OnModifierReleased() => EndHold(_heldBackActions, _modifierDownAt, _modifierDownFrame, true);
+    private void OnModifierReleased()
+    {
+        EndHold(_heldBackActions, _modifierDownAt, _modifierDownFrame, true);
+        SaveWheelTurn();
+    }
 
     // A held-back button let go: a tap that didn't use the wheel does the button's own action.
     [HideFromIl2Cpp]
@@ -678,6 +783,14 @@ public partial class Wheel : MonoBehaviour
             return;
         }
 
+        if (Swapped)
+            _showSpellsUntil = Time.unscaledTime + FlashSeconds;
+        if (Plugin.SelectOnly.Value)
+        {
+            Select(slot, spell);
+            return;
+        }
+
         // Checked before swapping, because unequipping a card removes its effect that is still
         // out (Mirror Walk's mirror). Mana drained over time is left to the game.
         if (spell.manaConsumptionType == SpellItemData.ManaConsumptionType.Instant && Cost(spell) > Mana())
@@ -694,7 +807,7 @@ public partial class Wheel : MonoBehaviour
         var previous = keepHome ? _home : _castSpell != null ? _castPrevious : equipped;
         _castWasEquipped = Cards.Same(spell, equipped);
         if (!_castWasEquipped)
-            inventory.EquipSpellFromInventory(spell);
+            EquipSpell(inventory, spell, true);
 
         _onLoan = keepHome && !Cards.Same(spell, _home) ? spell : null;
         _loanedAt = Time.unscaledTime;
@@ -709,6 +822,28 @@ public partial class Wheel : MonoBehaviour
             DescribeOnce(spell);
         }
         TryCast();
+    }
+
+    // SelectOnly: the slot's card is equipped as the Tarot menu would, and the Spell button casts it.
+    // It's the home card from here on, so nothing brings another one back.
+    [HideFromIl2Cpp]
+    private void Select(int slot, SpellItemData spell)
+    {
+        var inventory = Inventory;
+        _pendingControl = null;
+        if (_castSpell != null)
+        {
+            _castSpell = null;
+            DropHold();
+        }
+        var previous = inventory.GetEquippedSpell();
+        // The card taken off doesn't come back by itself: it only stays loaded if it's on the wheel.
+        if (!Cards.Same(spell, previous))
+            EquipSpell(inventory, spell, false);
+        _home = spell;
+        _onLoan = null;
+        _loanSticky = false;
+        Plugin.Logger.LogInfo($"[select] {SlotLabels[slot]} {spell.itemID} equipped, was {previous?.itemID ?? "none"}");
     }
 
     [HideFromIl2Cpp]
@@ -755,7 +890,7 @@ public partial class Wheel : MonoBehaviour
         string back = "";
         if (!_castWasEquipped && _castPrevious != null && !Cards.Same(_castPrevious, inventory.GetEquippedSpell()))
         {
-            inventory.EquipSpellFromInventory(Cards.Live<SpellItemData>(_castPrevious) ?? _castPrevious);
+            EquipSpell(inventory, Cards.Live<SpellItemData>(_castPrevious) ?? _castPrevious, true);
             back = $", back to {_castPrevious.itemID}";
         }
         Plugin.Logger.LogInfo(
@@ -868,26 +1003,66 @@ public partial class Wheel : MonoBehaviour
         string mode = Plugin.HudVisibility.Value;
         bool inMenu = MenuOpen;
         bool weapons = ShowingWeapons;
+        // A wheel in use always shows, whatever hides it otherwise.
+        bool inUse = _modifierDown || _weaponDown || _pageOpen || _waitingWeapon != null ||
+            Time.unscaledTime < _showWeaponsUntil || Time.unscaledTime < _flashUntil ||
+            Time.unscaledTime < _showSpellsUntil;
         bool visible = !_hudBroken &&
-            (inMenu || (mode != "Never" && GameplayInputActive() &&
-                (mode != "WhileHeld" || _modifierDown || weapons)));
+            (inMenu || (mode != "Never" && GameplayInputActive() && (mode != "WhileHeld" || inUse)));
+        // Built ahead: a new HUD is drawn for a few frames, fully transparent, so its icons,
+        // pictures and text are made before the first press in a fight (about 30 ms otherwise).
+        bool rehearsal = false;
+        if (!visible && !_hudBroken)
+        {
+            if ((_hud == null || !_hud.Alive) && mode != "Never" && GameplayInputActive())
+                _hudRehearsal = HudRehearsalFrames;
+            rehearsal = _hudRehearsal > 0;
+        }
+        if (visible)
+            _hudRehearsal = 0;
+        else if (rehearsal)
+            _hudRehearsal--;
+        UpdateMenuPrompts(inMenu);
         try
         {
             if (_hud == null || !_hud.Alive)
             {
-                if (!visible)
+                if (!visible && !rehearsal)
                     return;
                 _hud = new Hud();
             }
 
+            _hud.Silent = rehearsal;
+            if (rehearsal)
+            {
+                // Both wheels' tiles, as a press would show them; gone again with the last frame.
+                _hud.SetVisible(_hudRehearsal > 0, true);
+                if (_hudRehearsal > 0)
+                {
+                    _hud.SetMerged(true);
+                    SetLetters(0, false);
+                    SetLetters(1, true);
+                    _hud.ShowLetters(true);
+                    _hud.Frame(false, 1f);
+                    ShowSpells(0, false);
+                    ShowWeapons(1, false);
+                }
+                return;
+            }
+
             _hud.SetVisible(visible);
             if (!visible)
+            {
+                _hud.Animate();   // fades out showing what it last showed
                 return;
+            }
 
-            _hud.SetHint(inMenu ? MenuHint() : "");
+            // Only when the game's own footer can't carry the prompts.
+            _hud.SetHint(inMenu && !_nativePrompts ? MenuHint() : "");
             // Merged, gameplay shows both wheels; the menus show the one being assigned.
             bool merged = Merged && !inMenu;
             _hud.SetMerged(merged);
+            _hud.SetPage(weapons && !merged);
             SetLetters(0, weapons && !merged);
             if (merged)
                 SetLetters(1, true);
@@ -895,8 +1070,7 @@ public partial class Wheel : MonoBehaviour
             // While assigning, the letters say which slot a press picks.
             string labels = Plugin.ButtonLabels.Value;
             _hud.ShowLetters(_assigning || labels == "Always" || (labels == "WhileHeld" && held));
-            // Using the wheel always shows it, like the Tarot menu does.
-            float fade = Plugin.FollowGameHud.Value && !inMenu && !held && !weapons ? GameHud.Alpha() : 1f;
+            float fade = Plugin.FollowGameHud.Value && !inMenu && !held && !inUse ? GameHud.Alpha() : 1f;
             _hud.Frame(held, fade);
             if (merged)
             {
@@ -916,7 +1090,7 @@ public partial class Wheel : MonoBehaviour
         {
             _hudBroken = true;
             Plugin.Logger.LogError($"[hud] failed, HUD turned off: {e}");
-            try { _hud?.SetVisible(false); } catch { }
+            try { _hud?.SetVisible(false, true); } catch { }
         }
     }
 
@@ -955,6 +1129,6 @@ public partial class Wheel : MonoBehaviour
     private void HideHud()
     {
         if (_hud != null && _hud.Alive)
-            _hud.SetVisible(false);
+            _hud.SetVisible(false, true);
     }
 }

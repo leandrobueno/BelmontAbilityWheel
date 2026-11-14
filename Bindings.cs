@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BepInEx.Configuration;
 
 namespace AbilityWheel;
@@ -39,6 +40,12 @@ internal static class Bindings
         var (trouble, problem) = Problem(null, null);
         if (trouble != Trouble.None)
             Plugin.Logger.LogWarning($"[buttons] in the config file: {problem}");
+        // Keys are free text now: one that isn't a key does nothing.
+        foreach (var entry in Plugin.SlotKeys.Concat(Plugin.WeaponKeys).Append(Plugin.AssignKey))
+        {
+            if (!Keys.Known(entry.Value.Trim()))
+                Plugin.Logger.LogWarning($"[buttons] {entry.Definition.Key} = '{entry.Value}' isn't a key name (examples: Digit1, F, LeftShift, Numpad1, Mouse4)");
+        }
         Plugin.Settings.SettingChanged += (_, args) => OnChanged(args.ChangedSetting);
     }
 
@@ -211,6 +218,10 @@ internal static class Bindings
         "dpad/left" => "D-pad left",
         "dpad/right" => "D-pad right",
         "dpad/down" => "D-pad down",
+        "rightStick/up" => "Right stick up",
+        "rightStick/left" => "Right stick left",
+        "rightStick/right" => "Right stick right",
+        "rightStick/down" => "Right stick down",
         "leftShoulder" => "LB",
         "rightShoulder" => "RB",
         "leftTrigger" => "LT",

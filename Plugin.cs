@@ -11,7 +11,7 @@ namespace AbilityWheel;
 public class Plugin : BasePlugin
 {
     public const string Guid = "leandrobueno.abilitywheel";
-    public const string Version = "1.6.1";
+    public const string Version = "1.8.1";
 
     // Input System control names.
     internal static readonly string[] ModifierChoices =
@@ -26,9 +26,12 @@ public class Plugin : BasePlugin
     // Gamepad buttons a wheel slot can use, as Input System control paths on a gamepad.
     internal static readonly string[] FaceButtons = { "buttonNorth", "buttonWest", "buttonEast", "buttonSouth" };
     internal static readonly string[] DpadButtons = { "dpad/up", "dpad/left", "dpad/right", "dpad/down" };
+    // The right stick pushed in a direction counts as a button.
+    internal static readonly string[] StickButtons = { "rightStick/up", "rightStick/left", "rightStick/right", "rightStick/down" };
     internal static readonly string[] SlotButtonChoices =
     {
         "buttonNorth", "buttonWest", "buttonEast", "buttonSouth", "dpad/up", "dpad/left", "dpad/right", "dpad/down",
+        "rightStick/up", "rightStick/left", "rightStick/right", "rightStick/down",
         "leftShoulder", "rightShoulder", "leftTrigger", "rightTrigger", "leftStickPress", "rightStickPress",
     };
 
@@ -37,6 +40,9 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string> Modifier;
     internal static ConfigEntry<float> TapSeconds;
     internal static ConfigEntry<bool> MergedWheels;
+    internal static ConfigEntry<bool> SwapWheels;
+    internal static ConfigEntry<bool> NoHold;
+    internal static ConfigEntry<bool> SelectOnly;
     internal static ConfigEntry<string>[] SlotButtons;         // spell slots 1-4
     internal static ConfigEntry<string>[] WeaponSlotButtons;   // weapon slots 1-4
     internal static ConfigEntry<string>[] Slots;      // Wheel.SlotLabels order
@@ -44,6 +50,7 @@ public class Plugin : BasePlugin
     internal static ConfigEntry<string> AssignKey;
     internal static ConfigEntry<bool> WeaponPage;
     internal static ConfigEntry<string> WeaponButton;
+    internal static ConfigEntry<bool> TapToSwitch;
     internal static ConfigEntry<string>[] WeaponSlots;  // Wheel.SlotLabels order
     internal static ConfigEntry<string>[] WeaponKeys;   // Wheel.SlotLabels order
     internal static ConfigEntry<bool> AutoFillSlots;
@@ -63,9 +70,10 @@ public class Plugin : BasePlugin
     // crashed the runtime here ("Internal CLR error" in MonoMod's CompileMethodHook).
     private static readonly System.Type[] PatchClasses =
     {
-        typeof(FilterActionInput), typeof(FilterMoveInput), typeof(SpellHeldByWheel), typeof(SpellsMenuOpened),
+        typeof(FilterActionInput), typeof(FilterMoveInput), typeof(FilterAimInput), typeof(SpellHeldByWheel),
+        typeof(SpellsMenuOpened),
         typeof(NoEquipWhileAssigning), typeof(WeaponsMenuOpened), typeof(NoWeaponEquipWhileAssigning),
-        typeof(HomeCardInSaves),
+        typeof(HomeCardInSaves), typeof(KeepWeaponLoaded),
     };
 
     public override void Load()
@@ -87,13 +95,24 @@ public class Plugin : BasePlugin
             "On: holding the wheel button shows the spell and weapon wheels side by side, each with its own 4 " +
             "slot buttons (when this is turned on, weapon slots still on Y/X/B/A move to the D-pad). All 8 slot " +
             "buttons must differ, and WeaponButton doesn't apply.");
+        SwapWheels = Config.Bind("Controls", "SwapWheels", false,
+            "On: the wheel button alone opens the weapon wheel, and the weapon button (by default the wheel button, " +
+            "then LB) opens the spell wheel. Off: the other way round. Only applies once a weapon slot is filled, " +
+            "and not with MergedWheels.");
+        NoHold = Config.Bind("Controls", "SlotsWithoutHolding", false,
+            "On: slot buttons on the D-pad or the right stick work at once, without holding the wheel button. " +
+            "Slots on other buttons still need the hold. Works best with MergedWheels and one wheel on the D-pad, " +
+            "the other on the right stick; with the wheels apart, a button both wheels use goes to the wheel " +
+            "button's own wheel. The game's own use of those inputs is then off on the gamepad: the D-pad no " +
+            "longer moves Rose (the left stick does), and the right stick no longer moves the camera.");
         SlotButtons = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         WeaponSlotButtons = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         for (int slot = 0; slot < SlotButtons.Length; slot++)
         {
             SlotButtons[slot] = Config.Bind("Controls", $"SlotButton{slot + 1}", FaceButtons[slot],
                 new ConfigDescription(
-                    $"Gamepad button that casts the card in spell slot {slot + 1} while the wheel button is held.",
+                    $"Gamepad button that casts the card in spell slot {slot + 1} while the wheel button is held. " +
+                    "rightStick/up, /left, /right and /down are the right stick pushed that way.",
                     new AcceptableValueList<string>(SlotButtonChoices)));
             WeaponSlotButtons[slot] = Config.Bind("Controls", $"WeaponSlotButton{slot + 1}", FaceButtons[slot],
                 new ConfigDescription(
@@ -112,17 +131,14 @@ public class Plugin : BasePlugin
                 "are listed in BepInEx\\LogOutput.log ([cards] owned).\n" +
                 "Easier: in the Arcanas menu, highlight a card, click L3 (keyboard: AssignKey) and press the slot's button.");
             SlotKeys[slot] = Config.Bind("Keyboard", "SlotKey" + Wheel.SlotLabels[slot], "Digit" + (slot + 1),
-                new ConfigDescription(
-                    $"Keyboard key (or mouse side button) that casts the card in spell slot {slot + 1}. " +
-                    "No hold needed on keyboard.",
-                    new AcceptableValueList<string>(Keys.SlotKeyChoices)));
+                $"Keyboard key that casts the card in spell slot {slot + 1}. No hold needed on keyboard. Any key, " +
+                "by its Input System name (Digit1, F, LeftShift, Numpad1, F5...), or Mouse4 / Mouse5 for the mouse " +
+                "side buttons. A key the game also uses does both things.");
         }
         AssignKey = Config.Bind("Keyboard", "AssignKey", "F",
-            new ConfigDescription(
-                "In the Arcanas or Equipment menu: puts the highlighted card or weapon on the wheel (then press a " +
-                "slot key). " +
-                "The gamepad uses L3.",
-                new AcceptableValueList<string>(Keys.AssignKeyChoices)));
+            "In the Arcanas or Equipment menu: puts the highlighted card or weapon on the wheel (then press a " +
+            "slot key). The gamepad uses L3. Any key the menus don't use themselves (they use Q, E, 1, 3, R, " +
+            "Enter, Space, Backspace, Delete, Alt, Esc, Tab, WASD and the arrows).");
 
         WeaponPage = Config.Bind("Weapons", "WeaponPage", true,
             "Hold the weapon button (see WeaponButton) and press Y/X/B/A to switch to that slot's weapon. " +
@@ -138,6 +154,12 @@ public class Plugin : BasePlugin
             "still does the button's normal action. leftShoulder (LB) is the exception: the potion is " +
             "hold-to-drink, so with LB here, LB never drinks a potion (handy with a relic that blocks potions). " +
             "With both buttons held, the slot buttons go to the one pressed last. It can't be the wheel button.");
+        TapToSwitch = Config.Bind("Weapons", "TapToSwitch", false,
+            "For a WeaponButton that is a combination (the default, the wheel button then LB).\n" +
+            "On: while the wheel button is held, a tap of the combination's second button turns the wheel to the " +
+            "other one, and it stays there until the next tap, also after the wheel button is let go and the next " +
+            "time you play (SwapWheels follows it). So only one button is ever held with a slot's button.\n" +
+            "Off: the other wheel is open while both buttons are held.");
         WeaponSlots = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         WeaponKeys = new ConfigEntry<string>[Wheel.SlotLabels.Length];
         for (int slot = 0; slot < WeaponSlots.Length; slot++)
@@ -148,9 +170,7 @@ public class Plugin : BasePlugin
                 "BepInEx\\LogOutput.log ([weapons] owned).\n" +
                 "Easier: in the Equipment menu, highlight a weapon, click L3 (keyboard: AssignKey) and press the slot's button.");
             WeaponKeys[slot] = Config.Bind("Keyboard", "WeaponKey" + Wheel.SlotLabels[slot], "Digit" + (slot + 5),
-                new ConfigDescription(
-                    $"Keyboard key (or mouse side button) that equips the weapon in weapon slot {slot + 1}.",
-                    new AcceptableValueList<string>(Keys.SlotKeyChoices)));
+                $"Keyboard key that equips the weapon in weapon slot {slot + 1}. Any key, as for the spell slots.");
         }
 
         AutoFillSlots = Config.Bind("Cards", "AutoFillSlots", true,
@@ -160,6 +180,10 @@ public class Plugin : BasePlugin
             "while its own spell plays, then your card goes back on.\n" +
             "Off: the last card cast from the wheel stays equipped, so your spell button casts it again.\n" +
             "Cards with passives or arcana tasks that need the card equipped only count it while it's on.");
+        SelectOnly = Config.Bind("Cards", "SelectOnly", false,
+            "On: a spell slot's button only equips its card, as if picked in the Tarot menu; your spell button " +
+            "then casts it. Off: the slot's button casts the card at once. KeepHomeCard has nothing to do while " +
+            "this is on.");
 
         StayEquipped = Config.Bind("Cards", "StayEquipped", "PocketMirror",
             "With KeepHomeCard: cards whose effect stays out in the world, vanishes when the card is " +
@@ -210,6 +234,8 @@ public class Plugin : BasePlugin
             try
             {
                 harmony.CreateClassProcessor(type).Patch();
+                if (type == typeof(KeepWeaponLoaded))
+                    Wheel.CanKeepLoaded = true;
             }
             catch (System.Exception e)
             {

@@ -40,6 +40,9 @@ internal static class Cards
 
     internal static List<SpellItemData> Owned(Inventory inventory) => OwnedOf<SpellItemData>(inventory);
 
+    // The inventory's items of a type, as it lists them: some may be destroyed (see Live). Loading
+    // every one of them again took 3 ms an item, in the middle of play after each room change, so
+    // callers go by itemID (which a destroyed item still has) and call Live on the few they use.
     private static List<T> OwnedOf<T>(Inventory inventory) where T : ItemData
     {
         var result = new List<T>();
@@ -48,11 +51,21 @@ internal static class Cards
             return result;
         foreach (var item in items)
         {
-            var live = Live<T>(item);
-            if (live != null)
-                result.Add(live);
+            var typed = item?.TryCast<T>();
+            if (typed is not null && typed.itemID != null)
+                result.Add(typed);
         }
         return result;
+    }
+
+    internal static T Find<T>(List<T> owned, string id) where T : ItemData
+    {
+        foreach (var item in owned)
+        {
+            if (string.Equals(item.itemID, id, StringComparison.OrdinalIgnoreCase))
+                return Live<T>(item);
+        }
+        return null;
     }
 
     internal static void Resolve(Inventory inventory, SpellItemData[] slots)
@@ -64,9 +77,7 @@ internal static class Cards
         for (int slot = 0; slot < slots.Length; slot++)
         {
             string id = Plugin.Slots[slot].Value.Trim();
-            slots[slot] = id.Length == 0
-                ? null
-                : owned.FirstOrDefault(s => string.Equals(s.itemID, id, StringComparison.OrdinalIgnoreCase));
+            slots[slot] = id.Length == 0 ? null : Find(owned, id);
         }
 
         // The config descriptions send players here for the card IDs.
@@ -114,9 +125,7 @@ internal static class Cards
         for (int slot = 0; slot < slots.Length; slot++)
         {
             string id = Plugin.WeaponSlots[slot].Value.Trim();
-            slots[slot] = id.Length == 0
-                ? null
-                : owned.FirstOrDefault(w => string.Equals(w.itemID, id, StringComparison.OrdinalIgnoreCase));
+            slots[slot] = id.Length == 0 ? null : Find(owned, id);
         }
 
         var line = new StringBuilder("[weapons] wheel");

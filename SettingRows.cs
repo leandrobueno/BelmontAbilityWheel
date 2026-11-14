@@ -17,6 +17,8 @@ internal sealed class SettingRow
     internal T Label, Hint;
     internal T BindHint;    // the hint of the press-to-bind row, when it says more than Hint
     internal bool Combos;   // the press-to-bind row also takes "held+pressed"
+    internal bool AnyControl;      // the press-to-bind row takes every control of its device, not just Values
+    internal string[] Reserved;    // except these
     internal bool HiddenWhenMerged;   // only means something with the wheels apart
     internal float Min, Max, Step;
     internal string Format;
@@ -58,15 +60,20 @@ internal static class SettingRows
             Slider(Plugin.HudOffsetX, Texts.RightEdge, Texts.PixelsHint, 0f, 1600f, 8f, "{0:0}"),
             Slider(Plugin.HudOffsetY, Texts.BottomEdge, Texts.PixelsHint, 0f, 800f, 8f, "{0:0}"),
             Toggle(Plugin.KeepHomeCard, Texts.PinY, Texts.PinYHint),
+            Toggle(Plugin.SelectOnly, Texts.SelectOnly, Texts.SelectOnlyHint),
 
             Header(Texts.HeaderGamepad),
             Pad(Plugin.Modifier, Texts.WheelButton, Texts.WheelButtonHint, Plugin.ModifierChoices, Texts.WheelButtonBindHint)
                 .WithNames(Array.ConvertAll(Plugin.ModifierChoices, Bindings.Name)),
             Toggle(Plugin.MergedWheels, Texts.Merged, Texts.MergedHint),
         };
+        rows.Add(Toggle(Plugin.NoHold, Texts.NoHold, Texts.NoHoldHint));
         var weaponPage = Toggle(Plugin.WeaponPage, Texts.WeaponWheel, Texts.WeaponWheelHint);
         weaponPage.HiddenWhenMerged = true;
         rows.Add(weaponPage);
+        var swap = Toggle(Plugin.SwapWheels, Texts.SwapWheels, Texts.SwapWheelsHint);
+        swap.HiddenWhenMerged = true;
+        rows.Add(swap);
 
         var weaponButtons = new T[Plugin.WeaponButtonChoices.Length];
         weaponButtons[0] = Texts.WheelThenLB;
@@ -78,6 +85,9 @@ internal static class SettingRows
         weaponButton.Combos = true;
         weaponButton.HiddenWhenMerged = true;
         rows.Add(weaponButton);
+        var tapToSwitch = Toggle(Plugin.TapToSwitch, Texts.TapToSwitch, Texts.TapToSwitchHint);
+        tapToSwitch.HiddenWhenMerged = true;
+        rows.Add(tapToSwitch);
 
         string[] buttonNames = Array.ConvertAll(Plugin.SlotButtonChoices, Bindings.Name);
         for (int slot = 0; slot < Plugin.SlotButtons.Length; slot++)
@@ -91,20 +101,28 @@ internal static class SettingRows
                 Texts.WeaponSlotButtonHint, Plugin.SlotButtonChoices).WithNames(buttonNames));
         }
 
+        // Any key can be bound by pressing it. The lists are for Belmont UI 0.3, which only has
+        // lists: a key set some other way is added, so the list can show it.
         rows.Add(Header(Texts.HeaderKeyboard));
-        string[] keyNames = Keys.SlotKeyChoices.Select(KeyName).ToArray();
+        string[] slotKeys = WithCurrent(Keys.SlotKeyChoices, Plugin.SlotKeys.Concat(Plugin.WeaponKeys));
+        string[] keyNames = slotKeys.Select(KeyName).ToArray();
+        var slotKeyBindHint = Texts.Join(Texts.SlotKeyHint, Texts.AnyKey);
+        var weaponKeyBindHint = Texts.Join(Texts.WeaponKeyHint, Texts.AnyKey);
         for (int slot = 0; slot < Wheel.SlotLabels.Length; slot++)
         {
             rows.Add(Key(Plugin.SlotKeys[slot], Texts.Format(Texts.SlotKey, Number(slot)), Texts.SlotKeyHint,
-                Keys.SlotKeyChoices).WithNames(keyNames));
+                slotKeys, slotKeyBindHint).WithNames(keyNames));
         }
         for (int slot = 0; slot < Wheel.SlotLabels.Length; slot++)
         {
             rows.Add(Key(Plugin.WeaponKeys[slot], Texts.Format(Texts.WeaponKey, Number(slot)),
-                Texts.WeaponKeyHint, Keys.SlotKeyChoices).WithNames(keyNames));
+                Texts.WeaponKeyHint, slotKeys, weaponKeyBindHint).WithNames(keyNames));
         }
-        rows.Add(Key(Plugin.AssignKey, Texts.AssignKey, Texts.AssignKeyHint, Keys.AssignKeyChoices)
-            .WithNames(Keys.AssignKeyChoices));
+        string[] assignKeys = WithCurrent(Keys.AssignKeyChoices, new[] { Plugin.AssignKey });
+        var assignKey = Key(Plugin.AssignKey, Texts.AssignKey, Texts.AssignKeyHint, assignKeys,
+            Texts.Join(Texts.AssignKeyHint, Texts.AnyMenuKey)).WithNames(assignKeys.Select(KeyName).ToArray());
+        assignKey.Reserved = Keys.MenuKeys;
+        rows.Add(assignKey);
 
         return rows;
     }
@@ -125,13 +143,14 @@ internal static class SettingRows
     private static SettingRow Pad(ConfigEntryBase entry, T label, T hint, string[] values, T bindHint = null) =>
         new() { Entry = entry, Kind = "pad", Label = label, Hint = hint, BindHint = bindHint, Values = values };
 
-    private static SettingRow Key(ConfigEntryBase entry, T label, T hint, string[] values) =>
-        new() { Entry = entry, Kind = "key", Label = label, Hint = hint, Values = values };
+    private static SettingRow Key(ConfigEntryBase entry, T label, T hint, string[] values, T bindHint) =>
+        new() { Entry = entry, Kind = "key", Label = label, Hint = hint, BindHint = bindHint, Values = values, AnyControl = true };
+
+    private static string[] WithCurrent(string[] choices, IEnumerable<ConfigEntry<string>> entries) =>
+        choices.Concat(entries.Select(e => e.Value.Trim()).Where(Keys.Known)).Distinct().ToArray();
 
     private static SettingRow Header(T title) => new() { Kind = "header", Label = title };
 
     private static string KeyName(string key) =>
-        key.StartsWith("Digit", StringComparison.Ordinal) ? key.Substring(5)
-        : key.StartsWith("Mouse", StringComparison.Ordinal) ? "Mouse " + key.Substring(5)
-        : key;
+        key.StartsWith("Mouse", StringComparison.Ordinal) ? "Mouse " + key.Substring(5) : Keys.Label(key);
 }

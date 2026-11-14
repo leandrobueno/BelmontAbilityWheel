@@ -32,6 +32,11 @@ public partial class Wheel
     private bool _waitFaceRelease;
     private readonly List<InputAction> _blockedUiActions = new();
 
+    private MenuPrompts _spellPrompts;
+    private MenuPrompts _weaponPrompts;
+    private bool _nativePrompts;    // the open menu's own footer shows the wheel's prompts
+    private bool _promptsBroken;    // it can't: the HUD's plain hint line does, for the session
+
     [HideFromIl2Cpp]
     internal void OnSpellsMenuOpened(InventorySpellMenuManager menu) => _spellsMenu = menu;
 
@@ -122,6 +127,7 @@ public partial class Wheel
         _assigning = true;
         _assignCard = card;
         _assignSlots = slots;
+        PlayMenuSound(MenuSound.Pick);
         Plugin.Logger.LogInfo($"[assign] {card.itemID}: waiting for a slot button");
     }
 
@@ -129,6 +135,8 @@ public partial class Wheel
     private void EndAssign(string reason)
     {
         Plugin.Logger.LogInfo($"[assign] {_assignCard?.itemID ?? "-"} not assigned: {reason}");
+        if (MenuOpen)
+            PlayMenuSound(MenuSound.Cancel);
         _assigning = false;
         _assignCard = null;
         _assignSlots = null;
@@ -163,12 +171,48 @@ public partial class Wheel
         }
 
         Plugin.Logger.LogInfo($"[assign] {kind}{SlotLabels[slot]} = {id}{note}");
+        PlayMenuSound(MenuSound.Place);
         _assigning = false;
         _assignCard = null;
         _assignSlots = null;
         _waitFaceRelease = true;   // unblock the menu once the slot button is up
         RefreshSlots();
         RefreshWeapons();
+    }
+
+    private enum MenuSound { Pick, Place, Cancel }
+
+    // The open menu's own sounds: moving onto an item for "Add to wheel", equipping for a slot
+    // taken, leaving the inventory for a cancel. They follow the game's sound volume.
+    [HideFromIl2Cpp]
+    private void PlayMenuSound(MenuSound sound)
+    {
+        try
+        {
+            bool played;
+            if (_assignSlots == Plugin.WeaponSlots && _weaponsMenu != null)
+                played = Play(sound == MenuSound.Pick ? _weaponsMenu.onSelectItemSfx
+                    : sound == MenuSound.Place ? _weaponsMenu.equipWeaponSfx : _weaponsMenu.onCloseInventorySfx);
+            else if (_spellsMenu != null)
+                played = Play(sound == MenuSound.Pick ? _spellsMenu.onSelectItemSfx
+                    : sound == MenuSound.Place ? _spellsMenu.onEquipSpellSfx : _spellsMenu.onCloseInventorySfx);
+            else
+                return;
+            Plugin.Logger.LogDebug($"[assign] sound {sound}: {(played ? "played" : "the menu has none set")}");
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogDebug($"[assign] menu sound failed: {e.Message}");
+        }
+    }
+
+    [HideFromIl2Cpp]
+    private static bool Play(FMODUnity.EventReference sound)
+    {
+        if (sound.IsNull)
+            return false;
+        FMODUnity.RuntimeManager.PlayOneShot(sound, Vector3.zero);
+        return true;
     }
 
     // Only actions that are on, so unblocking restores exactly what was there.
@@ -215,7 +259,64 @@ public partial class Wheel
         UnblockUi();
     }
 
-    // Laid out like the game's own prompts ("Back" + button).
+    // "Add to wheel (L3)", or "Choose a slot (Y)(X)(B)(A)" and "Cancel (L3)", in the open menu's
+    // footer, next to the game's own prompts.
+    [HideFromIl2Cpp]
+    private void UpdateMenuPrompts(bool inMenu)
+    {
+        _nativePrompts = false;
+        if (!inMenu || _promptsBroken)
+            return;
+        try
+        {
+            bool spellsMenu = SpellsMenuOpen;
+            var prompts = spellsMenu ? _spellPrompts : _weaponPrompts;
+            if (prompts == null || !prompts.Alive)
+            {
+                prompts = MenuPrompts.Create(spellsMenu ? _spellsMenu.transform : _weaponsMenu.transform, 2);
+                if (prompts == null)
+                {
+                    _promptsBroken = true;
+                    return;
+                }
+                if (spellsMenu)
+                    _spellPrompts = prompts;
+                else
+                    _weaponPrompts = prompts;
+            }
+
+            bool keyboard = Keys.KeyboardMode;
+            string assign = keyboard ? Keys.Label(Plugin.AssignKey.Value) : Glyphs.Tag("leftStickPress");
+            if (_assigning)
+            {
+                bool weapons = _assignSlots == Plugin.WeaponSlots;
+                var keys = weapons ? Plugin.WeaponKeys : Plugin.SlotKeys;
+                var buttons = weapons ? Plugin.WeaponSlotButtons : Plugin.SlotButtons;
+                // Several keys share one key cap, as the game's own "W/S/A/D".
+                string slots = keyboard
+                    ? string.Join("/", Array.ConvertAll(keys, k => Keys.Label(k.Value)))
+                    : string.Concat(Array.ConvertAll(buttons, b => Glyphs.Tag(b.Value)));
+                prompts.Set(0, Texts.Get(Texts.ChooseSlot), slots, keyboard);
+                prompts.Set(1, Texts.Get(Texts.Cancel), keyboard ? "Esc" : assign, keyboard);
+            }
+            else
+            {
+                // The Armoury also lists weapons not found yet, which can't go on the wheel.
+                var card = Highlighted;
+                bool canAdd = card != null && (spellsMenu || Inventory.HasItemInInventoryOrEquipped(card));
+                prompts.Set(0, canAdd ? Texts.Get(Texts.AddToWheel) : null, assign, keyboard);
+                prompts.Set(1, null, null, false);
+            }
+            _nativePrompts = true;
+        }
+        catch (Exception e)
+        {
+            _promptsBroken = true;
+            Plugin.Logger.LogWarning($"[prompt] the footer prompts failed, showing the plain hint line instead: {e}");
+        }
+    }
+
+    // The plain line the HUD shows when the game's footer can't carry the prompts.
     [HideFromIl2Cpp]
     private string MenuHint()
     {

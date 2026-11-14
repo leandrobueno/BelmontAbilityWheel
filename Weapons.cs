@@ -47,6 +47,7 @@ public partial class Wheel
     private int _weaponDownFrame;
     private readonly List<string> _weaponHeldBack = new();
     private bool _warnedSameButton;
+    private bool _wheelTurned;   // TapToSwitch changed SwapWheels and the config file doesn't have it yet
 
     [HideFromIl2Cpp]
     private bool HasWeapons => Plugin.WeaponPage.Value && !Array.TrueForAll(_slotWeapons, w => w == null);
@@ -119,13 +120,72 @@ public partial class Wheel
             return;
         }
 
-        if (!_pageOpen)
-            return;
         var page = PageButton();
+        bool pressed = page != null && page.wasPressedThisFrame && _modifierDown && !MenuOpen && GameplayInputActive();
+        if (Plugin.TapToSwitch.Value)
+        {
+            _pageOpen = false;
+            if (pressed)
+                TurnWheel();
+            return;
+        }
+        if (!_pageOpen)
+        {
+            // Also opened here: a second button the game has no action on never reaches LetThrough.
+            if (pressed)
+            {
+                _pageOpen = true;
+                _lastWheelPressFrame = Time.frameCount;
+                Plugin.Logger.LogDebug("[weapon] page open");
+            }
+            return;
+        }
         if (page == null || !page.isPressed || !_modifierDown)
         {
             _pageOpen = false;
             Plugin.Logger.LogDebug("[weapon] page closed");
+        }
+    }
+
+    // TapToSwitch: the wheel button's wheel becomes the other one and stays. That is what
+    // SwapWheels says, so the setting itself is turned, and the settings page shows it. Written to
+    // the config file when the wheel button is let go rather than here, in the middle of a fight.
+    [HideFromIl2Cpp]
+    private void TurnWheel()
+    {
+        bool save = Plugin.Settings.SaveOnConfigSet;
+        Plugin.Settings.SaveOnConfigSet = false;
+        try
+        {
+            Plugin.SwapWheels.Value = !Plugin.SwapWheels.Value;
+        }
+        finally
+        {
+            Plugin.Settings.SaveOnConfigSet = save;
+        }
+        _wheelTurned = true;
+        _lastWheelPressFrame = Time.frameCount;
+        // What was just used no longer decides which wheel shows.
+        _showWeaponsUntil = 0f;
+        _showSpellsUntil = 0f;
+        Plugin.Logger.LogInfo($"[wheel] turned: the wheel button now opens the {(Swapped ? "weapon" : "spell")} wheel");
+    }
+
+    [HideFromIl2Cpp]
+    private void SaveWheelTurn()
+    {
+        if (!_wheelTurned)
+            return;
+        _wheelTurned = false;
+        try
+        {
+            long before = System.Diagnostics.Stopwatch.GetTimestamp();
+            Plugin.Settings.Save();
+            Plugin.Logger.LogDebug($"[perf] settings file written in {Ms(before, System.Diagnostics.Stopwatch.GetTimestamp()):0.0} ms");
+        }
+        catch (Exception e)
+        {
+            Plugin.Logger.LogWarning($"[wheel] the turned wheel wasn't saved: {e.Message}");
         }
     }
 
@@ -168,6 +228,7 @@ public partial class Wheel
                 Plugin.Logger.LogInfo($"[weapon] {_waitingWeapon.itemID} dropped: {weapon.itemID} is already equipped");
             _waitingWeapon = null;
             Plugin.Logger.LogDebug($"[weapon] {SlotLabels[slot]} {weapon.itemID}: already equipped");
+            WatchFrames("no switch (already equipped)");
             return;
         }
         _waitingWeapon = weapon;
@@ -231,11 +292,26 @@ public partial class Wheel
             _waitingWeapon = null;
             return;
         }
-        inventory.EquipWeaponFromInventory(weapon);
+        // A weapon of the wheel stays loaded when it is taken off (Warm.cs).
+        bool keep = KeepsItemsLoaded && InWheel(previous);
+        long before = System.Diagnostics.Stopwatch.GetTimestamp();
+        KeepLoaded = keep;
+        try
+        {
+            inventory.EquipWeaponFromInventory(weapon);
+        }
+        finally
+        {
+            KeepLoaded = false;
+        }
+        double equipMs = Ms(before, System.Diagnostics.Stopwatch.GetTimestamp());
         bool ok = Cards.Same(inventory.GetEquippedWeapon(), _waitingWeapon);
         Plugin.Logger.LogInfo(
             $"[weapon] {what} {(ok ? "equipped" : "NOT equipped")}, was {previous?.itemID ?? "none"}" +
             (_waitingAction != null ? $" (waited {waited:0.00}s, last for {_waitingAction})" : ""));
+        WatchFrames($"switch to {_waitingWeapon.itemID} (the game's equip call took {equipMs:0.0} ms" +
+            $"{(keep ? "" : ", the weapon taken off was unloaded")})");
+        NoteEquip(previous, weapon, keep);
         _waitingWeapon = null;
         _showWeaponsUntil = Time.unscaledTime + WeaponShowSeconds;
         if (Plugin.TraceActions.Value)
@@ -296,10 +372,23 @@ public partial class Wheel
         _pendingWeaponSlot = -1;
         _waitingWeapon = null;
         _showWeaponsUntil = 0f;
+        ForgetLoaded();
     }
 
+    // Which wheel the single-wheel HUD shows: the one being assigned in a menu, the wheel button's
+    // own wheel in gameplay, and the other one while it's open or a weapon was just switched.
     [HideFromIl2Cpp]
-    private bool ShowingWeapons =>
-        _pageOpen || WeaponsMenuOpen ||
-        (!SpellsMenuOpen && (_waitingWeapon != null || Time.unscaledTime < _showWeaponsUntil));
+    private bool ShowingWeapons
+    {
+        get
+        {
+            if (WeaponsMenuOpen)
+                return true;
+            if (SpellsMenuOpen)
+                return false;
+            if (Swapped)
+                return !_pageOpen && Time.unscaledTime >= _showSpellsUntil;
+            return _pageOpen || _waitingWeapon != null || Time.unscaledTime < _showWeaponsUntil;
+        }
+    }
 }
